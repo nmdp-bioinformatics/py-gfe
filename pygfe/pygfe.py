@@ -1,0 +1,129 @@
+# -*- coding: utf-8 -*-
+
+#
+#    pygfe pyGFE.
+#    Copyright (c) 2017 Be The Match operated by National Marrow Donor Program. All Rights Reserved.
+#
+#    This library is free software; you can redistribute it and/or modify it
+#    under the terms of the GNU Lesser General Public License as published
+#    by the Free Software Foundation; either version 3 of the License, or (at
+#    your option) any later version.
+#
+#    This library is distributed in the hope that it will be useful, but WITHOUT
+#    ANY WARRANTY; with out even the implied warranty of MERCHANTABILITY or
+#    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
+#    License for more details.
+#
+#    You should have received a copy of the GNU Lesser General Public License
+#    along with this library;  if not, write to the Free Software Foundation,
+#    Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
+#
+#    > http://www.fsf.org/licensing/licenses/lgpl.html
+#    > http://www.opensource.org/licenses/lgpl-license.php
+#
+
+import os
+import glob
+import re
+
+from pygfe.feature_client.apis.features_api import FeaturesApi
+from pygfe.feature_client.api_client import ApiClient
+from pygfe.feature_client.rest import ApiException
+from pprint import pprint
+from pygfe.feature_client.models.feature import Feature
+from pygfe.feature_client.models.feature_request import FeatureRequest
+
+is_kir = lambda x: True if re.search("KIR", x) else False
+
+
+class pyGFE(object):
+    '''
+    Example:
+
+        >>> from Bio import SeqIO
+        >>> from BioSQL import BioSeqDatabase
+        >>> from seqann.sequence_annotation import BioSeqAnn
+        >>> from pygfe.pygfe import pyGFE
+        >>> seq_file = 'test_dq.fasta'
+        >>> gfe = pyGFE()
+        >>> server = BioSeqDatabase.open_database(driver="pymysql", user="root",
+        ...                                       passwd="", host="localhost",
+        ...                                      db="bioseqdb")
+        >>> seqann = BioSeqAnn(server=server)
+        >>> seq_rec = list(SeqIO.parse(seq_file, 'fasta'))[0]
+        >>> annotation = seqann.annotate(seq_rec, "HLA-DQB1")
+        >>> gfe = gfe.get_gfe(annotation, "HLA-DQB1")
+        >>> print(gfe)
+        HLA-DQB1w0-4-0-141-0-12-0-4-0-0-0-0-0
+
+    '''
+    def __init__(self, url="http://feature.nmdp-bioinformatics.org", verbose=False):
+        self.verbose = verbose
+        client = ApiClient(host=url)
+        api_instance = FeaturesApi(api_client=client)
+        self.api = api_instance
+
+        structures = {}
+        struct_order = {}
+        data_dir = os.path.dirname(__file__)
+        struture_files = glob.glob(data_dir + '/data/*.structure')
+        for inputfile in struture_files:
+            file_path = inputfile.split("/")
+            locus = file_path[len(file_path)-1].split(".")[0]
+            # TODO: add try
+            with open(inputfile, 'r') as f:
+                features_order = {}
+                features = {}
+                n = 0
+                for line in f:
+                    line = line.rstrip()
+                    [feature, rank] = line.split("\t")
+                    feature_name = "_".join([feature, rank])
+                    if feature == "three_prime_UTR" or feature == "five_prime_UTR":
+                        feature_name = feature
+                    n += 1
+                    features.update({feature_name: n})
+                    features_order.update({n: feature_name})
+                    if is_kir(locus):
+                        structures.update({locus: features})
+                        struct_order.update({locus: features_order})
+                    else:
+                        structures.update({"HLA-" + locus: features})
+                        struct_order.update({"HLA-" + locus: features_order})
+            f.close()
+        self.structures = structures
+        self.struct_order = struct_order
+
+    def get_gfe(self, annotation, locus):
+
+        # locus=None, term=None, rank=None, sequence=None
+        features = {}
+        for feat in annotation.annotation:
+            term, rank = feat.split("_")
+            seq = str(annotation.annotation[feat].seq)
+            request = FeatureRequest(locus=locus,
+                                     term=term,
+                                     rank=rank,
+                                     sequence=seq)
+            feature = self.api.create_feature(body=request)
+            features.update({feat: feature.accession})
+
+        return self._make_gfe(features, locus)
+
+    def _make_gfe(self, features, locus):
+
+        gfe_list = []
+        hla, loc = locus.split("-")
+        for feat in sorted(self.structures[locus],
+                           key=lambda k: self.structures[locus][k]):
+
+            acc = str(0)
+            if feat in features:
+                acc = str(features[feat])
+            gfe_list.append(acc)
+
+        gfea = '-'.join(gfe_list)
+        return locus + "w" + gfea
+
+
+
