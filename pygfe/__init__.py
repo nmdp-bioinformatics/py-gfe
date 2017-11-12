@@ -21,10 +21,8 @@
 #    > http://www.fsf.org/licensing/licenses/lgpl.html
 #    > http://www.opensource.org/licenses/lgpl-license.php
 #
-# from __future__ import absolute_import
-# import .pygfe.feature_client 
-# from .pygfe import pyGFE
-
+from __future__ import absolute_import
+from .pygfe import pyGFE
 
 __author__ = """Mike Halagan"""
 __email__ = 'mhalagan@nmdp.org'
