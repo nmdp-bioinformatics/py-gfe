@@ -34,11 +34,20 @@ with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
 requirements = [
-    # TODO: put package requirements here
+    'bson',
+    'certifi',
+    'pytz',
+    'six',
+    'urllib3'
 ]
 
 test_requirements = [
     # TODO: put package test requirements here
+    'bson',
+    'certifi',
+    'pytz',
+    'six',
+    'urllib3'
 ]
 
 setup(
@@ -51,10 +60,13 @@ setup(
     url='https://github.com/mhalagan-nmdp/pygfe',
     packages=[
         'pygfe',
+        'pygfe.feature_client',
+        'pygfe.feature_client.apis',
+        'pygfe.feature_client.models'
     ],
     package_dir={'pygfe':
                  'pygfe'},
-    include_package_data=True,
+    package_data={'pygfe': ['data/*.structure']},
     install_requires=requirements,
     license="LGPL 3.0",
     zip_safe=False,

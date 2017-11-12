@@ -33,9 +33,9 @@ Example
     >>> from Bio import SeqIO
     >>> from BioSQL import BioSeqDatabase
     >>> from seqann.sequence_annotation import BioSeqAnn
-    >>> from pygfe.pygfe import pyGFE
+    >>> import pygfe
     >>> seq_file = 'test_dq.fasta'
-    >>> gfe = pyGFE()
+    >>> gfe = pygfe.pyGFE()
     >>> server = BioSeqDatabase.open_database(driver="pymysql", user="root",
     ...                                       passwd="", host="localhost",
     ...                                      db="bioseqdb")
