@@ -26,6 +26,7 @@ import os
 import glob
 import re
 
+
 from pygfe.feature_client.apis.features_api import FeaturesApi
 from pygfe.feature_client.api_client import ApiClient
 from pygfe.feature_client.rest import ApiException
@@ -34,6 +35,7 @@ from pygfe.feature_client.models.feature import Feature
 from pygfe.feature_client.models.feature_request import FeatureRequest
 
 is_kir = lambda x: True if re.search("KIR", x) else False
+isutr = lambda f: True if re.search("UTR", f) else False
 
 
 class pyGFE(object):
@@ -97,18 +99,31 @@ class pyGFE(object):
     def get_gfe(self, annotation, locus):
 
         # locus=None, term=None, rank=None, sequence=None
-        features = {}
+        features = []
+        accessions = {}
         for feat in annotation.annotation:
-            term, rank = feat.split("_")
-            seq = str(annotation.annotation[feat].seq)
-            request = FeatureRequest(locus=locus,
-                                     term=term,
-                                     rank=rank,
-                                     sequence=seq)
-            feature = self.api.create_feature(body=request)
-            features.update({feat: feature.accession})
+            if isutr(feat):
+                seq = str(annotation.annotation[feat].seq)
+                request = FeatureRequest(locus=locus,
+                                         term=feat,
+                                         rank=1,
+                                         sequence=seq)
+                feature = self.api.create_feature(body=request)
+                accessions.update({feat: feature.accession})
+                features.append(feature)
+            else:
+                term, rank = feat.split("_")
+                seq = str(annotation.annotation[feat].seq)
+                request = FeatureRequest(locus=locus,
+                                         term=term,
+                                         rank=rank,
+                                         sequence=seq)
+                feature = self.api.create_feature(body=request)
+                accessions.update({feat: feature.accession})
+                features.append(feature)
 
-        return self._make_gfe(features, locus)
+        gfe = self._make_gfe(accessions, locus)
+        return features, gfe
 
     def _make_gfe(self, features, locus):
 
