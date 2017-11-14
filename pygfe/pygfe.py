@@ -32,6 +32,7 @@ from pygfe.feature_client.api_client import ApiClient
 from pygfe.feature_client.rest import ApiException
 from pprint import pprint
 from pygfe.feature_client.models.feature import Feature
+from pygfe.feature_client.models.sequence import Sequence
 from pygfe.feature_client.models.feature_request import FeatureRequest
 
 is_kir = lambda x: True if re.search("KIR", x) else False
@@ -136,15 +137,22 @@ class pyGFE(object):
 
         loc, accessions = gfe.split("w")
         features = self._breakup_gfe(gfe)
+        feats = []
         seqs = []
         for f in features:
+
             if isutr(f):
-                seqs.append(self._seq(loc, f, 1,  features[f]))
+                feat = self._seq(loc, f, 1,  features[f])
+                seqs.append(feat.sequence)
+                feats.append(feat)
             else:
-                seqs.append(self._seq(loc, f.split("_")[0], f.split("_")[1],
-                            features[f]))
+                feat = self._seq(loc, f.split("_")[0], f.split("_")[1],
+                                 features[f])
+                seqs.append(feat.sequence)
+                feats.append(feat)
         seq = "".join(seqs)
-        return seq
+        sequence_o = Sequence(sequence=seq, structure=feats)
+        return sequence_o
 
     def _seq(self, locus, term, rank, accession):
         try:
@@ -152,7 +160,7 @@ class pyGFE(object):
                                                    term,
                                                    rank,
                                                    accession)
-            return feature.sequence
+            return feature
         except ApiException as e:
             print("Exception when calling DefaultApi->get_feature_by_path: %s\n" % e)
             return ''
