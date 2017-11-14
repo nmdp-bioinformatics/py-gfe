@@ -128,7 +128,6 @@ class pyGFE(object):
     def _make_gfe(self, features, locus):
 
         gfe_list = []
-        hla, loc = locus.split("-")
         for feat in sorted(self.structures[locus],
                            key=lambda k: self.structures[locus][k]):
 

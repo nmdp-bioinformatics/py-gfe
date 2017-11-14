@@ -52,7 +52,7 @@ test_requirements = [
 
 setup(
     name='pygfe',
-    version='0.0.2',
+    version='0.0.3',
     description="Python Boilerplate contains all the boilerplate you need to create a Python package.",
     long_description=readme + '\n\n' + history,
     author="Mike Halagan",
@@ -84,6 +84,7 @@ setup(
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
     ],
+    scripts=['scripts/seq2gfe'],
     test_suite='tests',
     tests_require=test_requirements
 )
