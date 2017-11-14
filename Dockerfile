@@ -13,5 +13,5 @@ RUN apt-get update -q \
 	&& apt-get install ncbi-blast+ -y
 
 RUN touch blank.fasta && seq2gfe -f blank.fasta -l HLA-A \
-	&& seq2gfe -f blank.fasta -l KIR3DL2 -k True
+	&& seq2gfe -f blank.fasta -l KIR3DL2 -k
 
