@@ -24,6 +24,17 @@ Python Boilerplate contains all the boilerplate you need to create a Python pack
 * Free software: LGPL 3.0
 * Documentation: https://pygfe.readthedocs.io.
 
+Docker
+--------
+* docker pull nmdpbioinformatics/pygfe
+
+.. code-block:: 
+
+	docker run -it --rm -v $PWD:/opt nmdpbioinformatics/pygfe seq2gfe \
+		-f /opt/your_fastafile.fasta -l HLA-A
+
+
+
 
 Example
 --------
