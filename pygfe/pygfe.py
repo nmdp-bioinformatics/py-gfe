@@ -98,7 +98,6 @@ class pyGFE(object):
 
     def get_gfe(self, annotation, locus):
 
-        # locus=None, term=None, rank=None, sequence=None
         features = []
         accessions = {}
         for feat in annotation.annotation:
@@ -108,6 +107,7 @@ class pyGFE(object):
                                          term=feat,
                                          rank=1,
                                          sequence=seq)
+
                 feature = self.api.create_feature(body=request)
                 accessions.update({feat: feature.accession})
                 features.append(feature)
@@ -118,12 +118,78 @@ class pyGFE(object):
                                          term=term,
                                          rank=rank,
                                          sequence=seq)
-                feature = self.api.create_feature(body=request)
-                accessions.update({feat: feature.accession})
-                features.append(feature)
+                try:
+                    feature = self.api.create_feature(body=request)
+                    accessions.update({feat: feature.accession})
+                    features.append(feature)
+                except ApiException as e:
+                    print("Exception when calling DefaultApi->create_feature: %s\n" % e)
+                    blank_feat = Feature(term=term, rank=rank, locus=locus,
+                                         sequence=seq)
+                    accessions.update({feat: 0})
+                    features.append(blank_feat)
 
         gfe = self._make_gfe(accessions, locus)
         return features, gfe
+
+    def get_sequence(self, gfe):
+
+        loc, accessions = gfe.split("w")
+        features = self._breakup_gfe(gfe)
+        seqs = []
+        for f in features:
+            if isutr(f):
+                seqs.append(self._seq(loc, f, 1,  features[f]))
+            else:
+                seqs.append(self._seq(loc, f.split("_")[0], f.split("_")[1],
+                            features[f]))
+        seq = "".join(seqs)
+        return seq
+
+    def _seq(self, locus, term, rank, accession):
+        try:
+            feature = self.api.get_feature_by_path(locus,
+                                                   term,
+                                                   rank,
+                                                   accession)
+            return feature.sequence
+        except ApiException as e:
+            print("Exception when calling DefaultApi->get_feature_by_path: %s\n" % e)
+            return ''
+
+    def _breakup_gfe(self, gfe):
+        [locus, feature_accessions] = gfe.split("w")
+        accessions = feature_accessions.split("-")
+
+        if locus == "HLA-DQB1":
+            if len(accessions) < len(self.structures[locus]):
+                i = 0
+                features = {}
+                old_dq = ["intro_1","exon_2","intron_2","exon_3","intro_3"]
+                for feature_rank in old_dq:
+                    accession = accessions[i]
+                    features.update({feature_rank: accession})
+                    i += 1
+
+                return(features)
+            else:
+                i = 0
+                features = {}
+                for feature_rank in self.structures[locus]:
+                    accession = accessions[i]
+                    features.update({feature_rank: accession})
+                    i += 1
+
+                return(features)
+        else:
+            i = 0
+            features = {}
+            for feature_rank in self.structures[locus]:
+                accession = accessions[i]
+                features.update({feature_rank: accession})
+                i += 1
+
+            return(features)
 
     def _make_gfe(self, features, locus):
 
@@ -138,6 +204,4 @@ class pyGFE(object):
 
         gfea = '-'.join(gfe_list)
         return locus + "w" + gfea
-
-
 
