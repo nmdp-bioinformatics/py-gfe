@@ -140,16 +140,17 @@ class pyGFE(object):
         feats = []
         seqs = []
         for f in features:
+            if int(features[f]) != 0:
+                if isutr(f):
+                    feat = self._seq(loc, f, 1,  features[f])
+                    seqs.append(feat.sequence)
+                    feats.append(feat)
+                else:
 
-            if isutr(f):
-                feat = self._seq(loc, f, 1,  features[f])
-                seqs.append(feat.sequence)
-                feats.append(feat)
-            else:
-                feat = self._seq(loc, f.split("_")[0], f.split("_")[1],
-                                 features[f])
-                seqs.append(feat.sequence)
-                feats.append(feat)
+                    feat = self._seq(loc, f.split("_")[0], f.split("_")[1],
+                                     features[f])
+                    seqs.append(feat.sequence)
+                    feats.append(feat)
         seq = "".join(seqs)
         sequence_o = Sequence(sequence=seq, structure=feats)
         return sequence_o
@@ -160,6 +161,7 @@ class pyGFE(object):
                                                    term,
                                                    rank,
                                                    accession)
+            print("SEQUENCE: ", feature)
             return feature
         except ApiException as e:
             print("Exception when calling DefaultApi->get_feature_by_path: %s\n" % e)
