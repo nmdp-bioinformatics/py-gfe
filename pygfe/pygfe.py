@@ -161,7 +161,6 @@ class pyGFE(object):
                                                    term,
                                                    rank,
                                                    accession)
-            print("SEQUENCE: ", feature)
             return feature
         except ApiException as e:
             print("Exception when calling DefaultApi->get_feature_by_path: %s\n" % e)
