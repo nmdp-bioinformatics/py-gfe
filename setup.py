@@ -52,7 +52,7 @@ test_requirements = [
 
 setup(
     name='pygfe',
-    version='0.0.7',
+    version='0.0.8',
     description="Python Boilerplate contains all the boilerplate you need to create a Python package.",
     long_description=readme + '\n\n' + history,
     author="Mike Halagan",
