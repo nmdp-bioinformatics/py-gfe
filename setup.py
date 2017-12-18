@@ -52,8 +52,8 @@ test_requirements = [
 
 setup(
     name='pygfe',
-    version='0.0.8',
-    description="Python Boilerplate contains all the boilerplate you need to create a Python package.",
+    version='0.0.9',
+    description="Python package for converting sequence annotations to gene feature enumerations (GFE).",
     long_description=readme + '\n\n' + history,
     author="Mike Halagan",
     author_email='mhalagan@nmdp.org',

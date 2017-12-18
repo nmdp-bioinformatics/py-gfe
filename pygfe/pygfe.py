@@ -169,36 +169,14 @@ class pyGFE(object):
     def _breakup_gfe(self, gfe):
         [locus, feature_accessions] = gfe.split("w")
         accessions = feature_accessions.split("-")
+        i = 0
+        features = {}
+        for feature_rank in self.structures[locus]:
+            accession = accessions[i]
+            features.update({feature_rank: accession})
+            i += 1
 
-        if locus == "HLA-DQB1":
-            if len(accessions) < len(self.structures[locus]):
-                i = 0
-                features = {}
-                old_dq = ["intro_1","exon_2","intron_2","exon_3","intro_3"]
-                for feature_rank in old_dq:
-                    accession = accessions[i]
-                    features.update({feature_rank: accession})
-                    i += 1
-
-                return(features)
-            else:
-                i = 0
-                features = {}
-                for feature_rank in self.structures[locus]:
-                    accession = accessions[i]
-                    features.update({feature_rank: accession})
-                    i += 1
-
-                return(features)
-        else:
-            i = 0
-            features = {}
-            for feature_rank in self.structures[locus]:
-                accession = accessions[i]
-                features.update({feature_rank: accession})
-                i += 1
-
-            return(features)
+        return(features)
 
     def _make_gfe(self, features, locus):
 
