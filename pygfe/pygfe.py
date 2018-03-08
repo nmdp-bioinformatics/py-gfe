@@ -24,7 +24,9 @@
 
 import os
 import glob
+import sys
 import re
+import logging
 
 
 from pygfe.feature_client.apis.features_api import FeaturesApi
@@ -37,6 +39,10 @@ from pygfe.feature_client.models.feature_request import FeatureRequest
 
 is_kir = lambda x: True if re.search("KIR", x) else False
 isutr = lambda f: True if re.search("UTR", f) else False
+
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    datefmt='%m/%d/%Y %I:%M:%S %p',
+                    level=logging.INFO)
 
 
 class pyGFE(object):
@@ -60,14 +66,27 @@ class pyGFE(object):
         HLA-DQB1w0-4-0-141-0-12-0-4-0-0-0-0-0
 
     '''
-    def __init__(self, url="http://feature.nmdp-bioinformatics.org", verbose=False):
+    def __init__(self, url="http://feature.nmdp-bioinformatics.org",
+                 loci=['HLA-A', 'HLA-B', 'HLA-C',
+                       'HLA-DRB1', 'HLA-DQB1', 'HLA-DRB4',
+                       'HLA-DRB5', 'HLA-DPB1', 'HLA-DPA1',
+                       'HLA-DQA1', 'HLA-DRB3'],
+                 load_features=False, store_features=False,
+                 verbose=False,
+                 verbosity=1):
+
+        self.loci = loci
         self.verbose = verbose
+        self.verbosity = verbosity
+        self.store_features = store_features
+
         client = ApiClient(host=url)
         api_instance = FeaturesApi(api_client=client)
         self.api = api_instance
 
         structures = {}
         struct_order = {}
+        self.all_feats = {loc: 0 for loc in loci}
         data_dir = os.path.dirname(__file__)
         struture_files = glob.glob(data_dir + '/data/*.structure')
         for inputfile in struture_files:
@@ -97,48 +116,173 @@ class pyGFE(object):
         self.structures = structures
         self.struct_order = struct_order
 
+        # Load all features from feature service
+        # if load_features if True
+        if load_features:
+            if verbose:
+                logging.info("Loading features...")
+
+            # Calling load_features() to load
+            # features at each locus
+            self.load_features()
+
+    def load_features(self):
+
+        # Loading all loci that
+        # are in self.loci variable defined
+        # when the pyGFE object is created
+        for loc in self.loci:
+            if self.verbose:
+                logging.info("Loading features for " + loc)
+
+            # Loading all features for loc from feature service
+            self.all_feats.update({loc: self.locus_features(loc)})
+
+            if self.verbose:
+                logging.info("Finished loading features for " + loc)
+
+        if self.verbose:
+            mem = "{:4.4f}".format(sys.getsizeof(self.all_feats) / 1000000)
+            logging.info("Finished loading all features * all_feats = " + mem + " MB *")
+
+    def locus_features(self, locus):
+
+        features = self.api.list_features(locus=locus)
+        feat_dict = {":".join([a.locus, str(a.rank), a.term, a.sequence]): a.accession for a in features}
+        return feat_dict
+
     def get_gfe(self, annotation, locus):
 
         features = []
         accessions = {}
         for feat in annotation.annotation:
-            if isutr(feat):
-                seq = str(annotation.annotation[feat].seq)
-                request = FeatureRequest(locus=locus,
-                                         term=feat,
-                                         rank=1,
-                                         sequence=seq)
+            seq = str(annotation.annotation[feat].seq)
 
-                feature = self.api.create_feature(body=request)
-                accessions.update({feat: feature.accession})
-                features.append(feature)
+            if isutr(feat):
+                feat_str = ":".join([locus, str(1), feat, seq])
+
+                # If the feature has been loaded or stored
+                # then use that instead of making a feature request
+                if self.verbose and self.verbosity > 2:
+                    logging.info("Getting accession " + feat_str)
+
+                if feat_str in self.all_feats[locus]:
+
+                    if self.verbose and self.verbosity > 2:
+                        logging.info("Feature found " + feat_str)
+
+                    accession = self.all_feats[locus][feat_str]
+                    feature = Feature(term=feat,
+                                      rank=1,
+                                      locus=locus,
+                                      sequence=seq,
+                                      accession=accession)
+                    accessions.update({feat: accession})
+                    features.append(feature)
+                else:
+
+                    if self.verbose and self.verbosity > 2:
+                        logging.info("Making FeatureRequest " + feat_str)
+
+                    # Create FeatureRequest object
+                    request = FeatureRequest(locus=locus,
+                                             term=feat,
+                                             rank=1,
+                                             sequence=seq)
+
+                    # Attempt to make feature request
+                    try:
+                        feature = self.api.create_feature(body=request)
+                        accessions.update({feat: feature.accession})
+                        features.append(feature)
+                    except ApiException as e:
+                        logging.warn("Exception when calling DefaultApi->create_feature" + e)
+                        blank_feat = Feature(term=feat, rank=1, locus=locus,
+                                             sequence=seq)
+                        accessions.update({feat: 0})
+                        features.append(blank_feat)
+
+                    # Store new features for quick retrieval if flag passed
+                    if self.store_features:
+
+                        # Adding new feature to all_feats
+                        self.all_feats[locus].update({feat_str: feature.accession})
+
+                        # Calculating memory size of all_feats
+                        if self.verbose and self.verbosity > 1:
+                            logging.info("Storing new feature " + feat_str)
+                            mem = "{:4.4f}".format(sys.getsizeof(self.all_feats) / 1000000)
+                            logging.info("Updated * all_feats " + mem + " MB *")
+
             else:
                 term, rank = feat.split("_")
-                seq = str(annotation.annotation[feat].seq)
-                request = FeatureRequest(locus=locus,
-                                         term=term,
-                                         rank=rank,
-                                         sequence=seq)
-                try:
-                    feature = self.api.create_feature(body=request)
-                    accessions.update({feat: feature.accession})
-                    features.append(feature)
-                except ApiException as e:
-                    print("Exception when calling DefaultApi->create_feature: %s\n" % e)
-                    blank_feat = Feature(term=term, rank=rank, locus=locus,
-                                         sequence=seq)
-                    accessions.update({feat: 0})
-                    features.append(blank_feat)
+                feat_str = ":".join([locus, str(rank), term, seq])
 
+                # If the feature has been loaded or stored
+                # then use that instead of making a feature request
+                if feat_str in self.all_feats[locus]:
+
+                    if self.verbose and self.verbosity > 2:
+                        logging.info("Feature found " + feat_str)
+
+                    accession = self.all_feats[locus][feat_str]
+                    feature = Feature(term=term,
+                                      rank=rank,
+                                      locus=locus,
+                                      sequence=seq,
+                                      accession=accession)
+                    accessions.update({feat: accession})
+                    features.append(feature)
+                else:
+
+                    if self.verbose and self.verbosity > 2:
+                        logging.info("Making FeatureRequest " + feat_str)
+
+                    # Create FeatureRequest object
+                    request = FeatureRequest(locus=locus,
+                                             term=term,
+                                             rank=rank,
+                                             sequence=seq)
+
+                    # Attempt to make feature request
+                    try:
+                        feature = self.api.create_feature(body=request)
+                        accessions.update({feat: feature.accession})
+                        features.append(feature)
+                    except ApiException as e:
+                        print(request)
+                        logging.warn("Exception when calling DefaultApi->create_feature %e" + e)
+                        blank_feat = Feature(term=term, rank=rank, locus=locus,
+                                             sequence=seq)
+                        accessions.update({feat: 0})
+                        features.append(blank_feat)
+
+                    # Store new features for quick retrieval if flag passed
+                    if self.store_features:
+
+                        # Adding new feature to all_feats
+                        self.all_feats[locus].update({feat_str: feature.accession})
+
+                        # Calculating memory size of all_feats
+                        if self.verbose and self.verbosity > 1:
+                            logging.info("Storing new feature " + feat_str)
+                            mem = "{:4.4f}".format(sys.getsizeof(self.all_feats) / 1000000)
+                            logging.info("Updated * all_feats " + mem + " MB *")
+
+        # Creating GFE
         gfe = self._make_gfe(accessions, locus)
+
+        if self.verbose:
+            logging.info("GFE = " + gfe)
+
         return features, gfe
 
     def get_sequence(self, gfe):
 
-        loc, accessions = gfe.split("w")
-        features = self._breakup_gfe(gfe)
         feats = []
         seqs = []
+        loc, accessions = gfe.split("w")
+        features = self._breakup_gfe(gfe)
         for f in features:
             if int(features[f]) != 0:
                 if isutr(f):
