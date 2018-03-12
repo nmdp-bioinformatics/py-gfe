@@ -27,12 +27,11 @@ import glob
 import sys
 import re
 import logging
-
+from pprint import pprint
 
 from pygfe.feature_client.apis.features_api import FeaturesApi
 from pygfe.feature_client.api_client import ApiClient
 from pygfe.feature_client.rest import ApiException
-from pprint import pprint
 from pygfe.feature_client.models.feature import Feature
 from pygfe.feature_client.models.sequence import Sequence
 from pygfe.feature_client.models.feature_request import FeatureRequest
@@ -86,7 +85,7 @@ class pyGFE(object):
 
         structures = {}
         struct_order = {}
-        self.all_feats = {loc: 0 for loc in loci}
+        self.all_feats = {loc: {} for loc in loci}
         data_dir = os.path.dirname(__file__)
         struture_files = glob.glob(data_dir + '/data/*.structure')
         for inputfile in struture_files:
@@ -117,7 +116,6 @@ class pyGFE(object):
         self.struct_order = struct_order
 
         # Load all features from feature service
-        # if load_features if True
         if load_features:
             if verbose:
                 logging.info("Loading features...")
@@ -127,7 +125,14 @@ class pyGFE(object):
             self.load_features()
 
     def load_features(self):
+        """
+        creates GFE from HLA sequence and locus
 
+        :param locus: string containing HLA locus.
+        :param sequence: string containing sequence data.
+
+        :return: GFEobject.
+        """
         # Loading all loci that
         # are in self.loci variable defined
         # when the pyGFE object is created
@@ -146,15 +151,30 @@ class pyGFE(object):
             logging.info("Finished loading all features * all_feats = " + mem + " MB *")
 
     def locus_features(self, locus):
+        """
+        creates GFE from HLA sequence and locus
 
+        :param locus: string containing HLA locus.
+        :param sequence: string containing sequence data.
+
+        :return: GFEobject.
+        """
         features = self.api.list_features(locus=locus)
         feat_dict = {":".join([a.locus, str(a.rank), a.term, a.sequence]): a.accession for a in features}
         return feat_dict
 
     def get_gfe(self, annotation, locus):
+        """
+        creates GFE from HLA sequence and locus
 
+        :param locus: string containing HLA locus.
+        :param sequence: string containing sequence data.
+
+        :return: GFEobject.
+        """
         features = []
         accessions = {}
+        print("IN PYGFE: " + locus)
         for feat in annotation.annotation:
             seq = str(annotation.annotation[feat].seq)
 
@@ -278,7 +298,14 @@ class pyGFE(object):
         return features, gfe
 
     def get_sequence(self, gfe):
+        """
+        creates GFE from HLA sequence and locus
 
+        :param locus: string containing HLA locus.
+        :param sequence: string containing sequence data.
+
+        :return: GFEobject.
+        """
         feats = []
         seqs = []
         loc, accessions = gfe.split("w")
@@ -300,6 +327,14 @@ class pyGFE(object):
         return sequence_o
 
     def _seq(self, locus, term, rank, accession):
+        """
+        creates GFE from HLA sequence and locus
+
+        :param locus: string containing HLA locus.
+        :param sequence: string containing sequence data.
+
+        :return: GFEobject.
+        """
         try:
             feature = self.api.get_feature_by_path(locus,
                                                    term,
@@ -311,6 +346,14 @@ class pyGFE(object):
             return ''
 
     def _breakup_gfe(self, gfe):
+        """
+        creates GFE from HLA sequence and locus
+
+        :param locus: string containing HLA locus.
+        :param sequence: string containing sequence data.
+
+        :return: GFEobject.
+        """
         [locus, feature_accessions] = gfe.split("w")
         accessions = feature_accessions.split("-")
         i = 0
@@ -323,7 +366,14 @@ class pyGFE(object):
         return(features)
 
     def _make_gfe(self, features, locus):
+        """
+        creates GFE from HLA sequence and locus
 
+        :param locus: string containing HLA locus.
+        :param sequence: string containing sequence data.
+
+        :return: GFEobject.
+        """
         gfe_list = []
         for feat in sorted(self.structures[locus],
                            key=lambda k: self.structures[locus][k]):

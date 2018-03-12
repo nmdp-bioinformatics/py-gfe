@@ -36,18 +36,38 @@ Tests for `pygfe` module.
 import sys
 import unittest
 
-from pygfe import pygfe
-
+from pygfe.pygfe import pyGFE
+import os
 
 
 class TestPygfe(unittest.TestCase):
 
     def setUp(self):
+        self.data_dir = os.path.dirname(__file__) + "/resources"
         pass
 
     def tearDown(self):
         pass
 
-    def test_000_something(self):
+    def test_000_pygfe(self):
+        pygfe = pyGFE()
+        self.assertIsInstance(pygfe, pyGFE)
+        self.assertGreater(len(pygfe.structures), 1)
+        self.assertTrue('HLA-A' in pygfe.structures)
+        self.assertFalse('HLA-Z' in pygfe.structures)
         pass
+
+    def test_001_pygfe_load(self):
+        pygfe = pyGFE(verbose=True, load_features=True)
+        self.assertIsInstance(pygfe, pyGFE)
+        self.assertGreater(len(pygfe.structures), 1)
+        self.assertGreater(len(pygfe.all_feats), 1)
+        self.assertTrue('HLA-A' in pygfe.structures)
+        self.assertFalse('HLA-Z' in pygfe.structures)
+        pass
+
+
+
+
+
 
