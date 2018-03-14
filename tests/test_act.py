@@ -35,10 +35,8 @@ Tests for `pygfe` module.
 
 import sys
 import unittest
-from pygfe.models.allele_call import AlleleCall
-from pygfe.pygfe import pyGFE
-import os
 
+import os
 from Bio import SeqIO
 from pygfe.act import ACT
 from py2neo import Graph
@@ -98,16 +96,54 @@ def conn():
         return False
 
 
-class TestPygfe(unittest.TestCase):
+class TestAct(unittest.TestCase):
 
     def setUp(self):
         self.data_dir = os.path.dirname(__file__) + "/resources"
+
         pass
 
     def tearDown(self):
         pass
 
-    def test_000_pygfe(self):
+    # def test_000_act(self):
+    #     graph = Graph(neo4jurl, user=neo4juser, password=neo4jpass,
+    #                   bolt=False)
+    #     if conn():
+    #         server = BioSeqDatabase.open_database(driver="pymysql",
+    #                                               user=biosqluser,
+    #                                               passwd=biosqlpass,
+    #                                               host=biosqlhost,
+    #                                               db=biosqldb)
+    #         print("Server found!", file=sys.stderr)
+    #         seqann = BioSeqAnn(server=server)
+    #     else:
+    #         print("No Server found!", file=sys.stderr)
+    #         seqann = BioSeqAnn()
+    #     act = ACT(gfedb=GfeDB(graph),
+    #               seqann=seqann,
+    #               gfe=GFE())
+
+    #     self.assertIsInstance(act, ACT)
+    #     pass
+
+    # def test_001_type_sequence(self):
+    #     act = ACT(self.graph)
+    #     seqs = list(SeqIO.parse(self.data_dir + "/known_A.fasta", "fasta"))
+    #     typing = act.type_hla("HLA-A", str(seqs[0].seq), '')
+    #     print(type(typing))
+    #     self.assertIsInstance(act, ACT)
+    #     pass
+
+    # def test_002_type_unknown(self):
+    #     seqs = list(SeqIO.parse(self.data_dir + "/unknown_A.fasta", "fasta"))
+    #     typing = self.act.type_from_seq("HLA-A", str(seqs[0].seq))
+    #     self.assertIsInstance(self.act, ACT)
+    #     self.assertIsInstance(typing, AlleleCall)
+    #     pass
+
+    def test_002_type_unknown(self):
+        #test_id = act.get_alleleid("A*01:01:01:01")
         graph = Graph(neo4jurl, user=neo4juser, password=neo4jpass,
                       bolt=False)
         if conn():
@@ -116,43 +152,38 @@ class TestPygfe(unittest.TestCase):
                                                   passwd=biosqlpass,
                                                   host=biosqlhost,
                                                   db=biosqldb)
+            print("Server found!", file=sys.stderr)
             seqann = BioSeqAnn(server=server)
         else:
+            print("No Server found!", file=sys.stderr)
             seqann = BioSeqAnn()
-        pygfe = pyGFE(graph=graph,
-                      seqann=seqann)
-        self.assertIsInstance(pygfe, pyGFE)
+        act = ACT(gfedb=GfeDB(graph),
+                  seqann=seqann,
+                  gfe=GFE())
+
         seqs = list(SeqIO.parse(self.data_dir + "/unknown_A.fasta", "fasta"))
-        typing = pygfe.type_from_seq("HLA-A", str(seqs[0].seq))
-        self.assertEqual(typing.gfe, 'HLA-Aw770-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-4')
-        self.assertEqual(typing.typing[0].hla, 'HLA-A*01:01:01:01')
-        self.assertEqual(typing.typing_status.status, "novel")
-        self.assertIsInstance(typing, AlleleCall)
+        typing = act.type_from_seq("HLA-A", str(seqs[0].seq))
+        print(typing)
+        print("TEST 2")
+        print(type(typing))
+        self.assertIsInstance(act, ACT)
+        # self.assertGreater(len(pygfe.structures), 1)
+        # self.assertTrue('HLA-A' in pygfe.structures)
+        # self.assertFalse('HLA-Z' in pygfe.structures)
         pass
 
-    def test_001_load_features(self):
-        graph = Graph(neo4jurl, user=neo4juser, password=neo4jpass,
-                      bolt=False)
-        if conn():
-            server = BioSeqDatabase.open_database(driver="pymysql",
-                                                  user=biosqluser,
-                                                  passwd=biosqlpass,
-                                                  host=biosqlhost,
-                                                  db=biosqldb)
-            seqann = BioSeqAnn(server=server)
-        else:
-            seqann = BioSeqAnn()
-        pygfe = pyGFE(graph=graph,
-                      seqann=seqann,
-                      verbose=True,
-                      load_features=True)
-        self.assertIsInstance(pygfe, pyGFE)
-        self.assertGreater(len(pygfe.gfe.structures), 1)
-        self.assertGreater(len(pygfe.gfe.all_feats), 1)
-        self.assertTrue('HLA-A' in pygfe.gfe.structures)
-        self.assertFalse('HLA-Z' in pygfe.gfe.structures)
-        pass
-
+    # def test_003_pygfe(self):
+    #     act = ACT(self.graph)
+    #     #test_id = act.get_alleleid("A*01:01:01:01")
+    #     seqs = list(SeqIO.parse(self.data_dir + "/test_seq.fasta", "fasta"))
+    #     lookups = act.type_hla("HLA-A", str(seqs[0].seq), '')
+    #     #print(lookups)
+    #     #lookups = act.sequence_lookup("HLA-A", str(seqs[0].seq))
+    #     self.assertIsInstance(act, ACT)
+    #     # self.assertGreater(len(pygfe.structures), 1)
+    #     # self.assertTrue('HLA-A' in pygfe.structures)
+    #     # self.assertFalse('HLA-Z' in pygfe.structures)
+    #     pass
     # def test_001_pygfe_load(self):
     #     pygfe = pyGFE(verbose=True, load_features=True)
     #     self.assertIsInstance(pygfe, pyGFE)
