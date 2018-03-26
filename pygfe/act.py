@@ -145,10 +145,9 @@ class ACT(object):
         ac_object.pygfe_version = 'tv1'
         ac_object.gfedb_version = 'gfedbv'
         sequence = sequence.upper()
-        print("LOOKUP 1:")
         sequence_typing = self.sequence_lookup(locus, sequence)
         if sequence_typing:
-            ac_object.typing_status.status = "documented"
+            ac_object.status = "documented"
             ac_object.hla = sequence_typing[0]
             ac_object.gfe = sequence_typing[1]
             ac_object.closest_gfe = sequence_typing[1]
@@ -191,6 +190,13 @@ class ACT(object):
         feat_order.sort()
         db = self.seqann.refdata.dbversion
 
+        #print(feat_order)
+        #print(self.gfe.struct_order[locus])
+        #print(annotation.aligned)
+        #print(annotation.aligned[self.gfe.struct_order[locus][0]])
+
+        #print("ALIGNED:")
+        #print(annotation.aligned)
         # TODO: Only load structures in one place
         # TODO: Add to cypher sub module
         dbv = ".".join([list(db)[0], "".join(list(db)[1:3]), list(db)[3]])
@@ -215,7 +221,8 @@ class ACT(object):
             ref_seq = diff_data['REF'][i]
             in_seq = diff_data['SEQ'][i]
             relative_location = index + self.seqann.refdata.location[locus]
-            diff = Seqdiff(term=diff_feat, rank=1, location=relative_location, ref=ref_seq, inseq=in_seq)
+            # TODO: Change rank!
+            diff = Seqdiff(term=diff_feat, location=str(relative_location), ref=ref_seq, inseq=in_seq)
             diffs.append(diff)
         return diffs
 
@@ -298,9 +305,7 @@ class ACT(object):
         """
         seq_rec = SeqRecord(Seq(sequence, IUPAC.unambiguous_dna), id="GFE")
         annotation = self.seqann.annotate(seq_rec, locus)
-        print("SHOULDNT HAVE GRAPH CALLS1")
         features, gfe = self.gfe.get_gfe(annotation, locus)
-        print("SHOULDNT HAVE GRAPH CALLS2")
         return {'gfe': gfe, 'structure': features, 'annotation': annotation}
 
     def gfe_lookup(self, gfe, features):

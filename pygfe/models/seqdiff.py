@@ -15,13 +15,13 @@ class Seqdiff(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, term: str=None, rank: int=None, location: str=None, ref: str=None, inseq: str=None):  # noqa: E501
+    def __init__(self, term: str=None, rank: str=None, location: str=None, ref: str=None, inseq: str=None):  # noqa: E501
         """Seqdiff - a model defined in Swagger
 
         :param term: The term of this Seqdiff.  # noqa: E501
         :type term: str
         :param rank: The rank of this Seqdiff.  # noqa: E501
-        :type rank: int
+        :type rank: str
         :param location: The location of this Seqdiff.  # noqa: E501
         :type location: str
         :param ref: The ref of this Seqdiff.  # noqa: E501
@@ -31,7 +31,7 @@ class Seqdiff(Model):
         """
         self.swagger_types = {
             'term': str,
-            'rank': int,
+            'rank': str,
             'location': str,
             'ref': str,
             'inseq': str
@@ -84,22 +84,22 @@ class Seqdiff(Model):
         self._term = term
 
     @property
-    def rank(self) -> int:
+    def rank(self) -> str:
         """Gets the rank of this Seqdiff.
 
 
         :return: The rank of this Seqdiff.
-        :rtype: int
+        :rtype: str
         """
         return self._rank
 
     @rank.setter
-    def rank(self, rank: int):
+    def rank(self, rank: str):
         """Sets the rank of this Seqdiff.
 
 
         :param rank: The rank of this Seqdiff.
-        :type rank: int
+        :type rank: str
         """
 
         self._rank = rank

@@ -52,7 +52,7 @@ test_requirements = [
 
 setup(
     name='pygfe',
-    version='0.0.13',
+    version='0.0.14',
     description="Python package for converting sequence annotations to gene feature enumerations (GFE).",
     long_description=readme + '\n\n' + history,
     author="Mike Halagan",
@@ -60,6 +60,7 @@ setup(
     url='https://github.com/mhalagan-nmdp/pygfe',
     packages=[
         'pygfe',
+        'pygfe.models',
         'pygfe.feature_client',
         'pygfe.feature_client.apis',
         'pygfe.feature_client.models'
