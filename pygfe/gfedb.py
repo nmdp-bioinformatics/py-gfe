@@ -35,14 +35,14 @@ from pygfe.cypher import groups_classII
 from pygfe.models.error import Error
 from pygfe.models.feature import Feature
 from pygfe.models.typing import Typing
-from pygfe.models.gfe_call import GfeCall
-from pygfe.models.gfe_typing import GfeTyping
-from pygfe.models.allele_call import AlleleCall
-from pygfe.models.feature_call import FeatureCall
-from pygfe.models.typing_status import TypingStatus
-from pygfe.models.ars_call import ArsCall
-from pygfe.models.persisted import Persisted
-from pygfe.models.persisted_data import PersistedData
+# from pygfe.models.gfe_call import GfeCall
+# from pygfe.models.gfe_typing import GfeTyping
+# from pygfe.models.allele_call import AlleleCall
+# from pygfe.models.feature_call import FeatureCall
+# from pygfe.models.typing_status import TypingStatus
+# from pygfe.models.ars_call import ArsCall
+# from pygfe.models.persisted import Persisted
+# from pygfe.models.persisted_data import PersistedData
 
 from py2neo import Node, Relationship
 import pandas as pd
@@ -116,7 +116,7 @@ class GfeDB(object):
                 for line in f:
                     line = line.rstrip()
                     [feature, rank] = line.split("\t")
-                    feature_name = "_".join([feature, rank])
+                    feature_name = "-".join([feature.upper(), rank])
                     if feature == "three_prime_UTR" or feature == "five_prime_UTR":
                         feature_name = feature
                     n += 1

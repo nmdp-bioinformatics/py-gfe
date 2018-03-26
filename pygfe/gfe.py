@@ -43,10 +43,6 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
                     datefmt='%m/%d/%Y %I:%M:%S %p',
                     level=logging.INFO)
 
-# **
-# TODO: Change input to not require annotation object
-# **
-
 
 class GFE(object):
     '''
@@ -181,6 +177,7 @@ class GFE(object):
         for feat in annotation.annotation:
             seq = str(annotation.annotation[feat].seq)
 
+            # TODO: Drop this if statement
             if isutr(feat):
                 feat_str = ":".join([locus, str(1), feat, seq])
 
