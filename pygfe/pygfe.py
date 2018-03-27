@@ -1,194 +1,107 @@
-# -*- coding: utf-8 -*-
+'''
+Created on Feb 8, 2017
 
-#
-#    pygfe pyGFE.
-#    Copyright (c) 2017 Be The Match operated by National Marrow Donor Program. All Rights Reserved.
-#
-#    This library is free software; you can redistribute it and/or modify it
-#    under the terms of the GNU Lesser General Public License as published
-#    by the Free Software Foundation; either version 3 of the License, or (at
-#    your option) any later version.
-#
-#    This library is distributed in the hope that it will be useful, but WITHOUT
-#    ANY WARRANTY; with out even the implied warranty of MERCHANTABILITY or
-#    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
-#    License for more details.
-#
-#    You should have received a copy of the GNU Lesser General Public License
-#    along with this library;  if not, write to the Free Software Foundation,
-#    Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
-#
-#    > http://www.fsf.org/licensing/licenses/lgpl.html
-#    > http://www.opensource.org/licenses/lgpl-license.php
-#
+@author: mhalagan
+'''
+
+from seqann import BioSeqAnn
+from pygfe.feature_client.models.feature import Feature
+
+from pygfe.cypher import sequence_search
+from pygfe.cypher import gfe_search
+from pygfe.cypher import similar_gfe_classI
+from pygfe.cypher import similar_gfe_classII
+from pygfe.cypher import gfe_hla
+from pygfe.cypher import hla_Ggroups
+from pygfe.cypher import hla_gfe
+from pygfe.cypher import hla_ars
+from pygfe.cypher import gfe_ars
+from pygfe.cypher import get_sequence
+from pygfe.cypher import similar_kir
+from pygfe.cypher import get_features
+# from pygfe.cypher import ref_query
+from pygfe.cypher import search_hla_features
+
+from pygfe.cypher import hla_alleleid
+from pygfe.cypher import gfe_alleleid
+from pygfe.cypher import fullseqid
+from pygfe.cypher import seqid
+from pygfe.cypher import search_feature
+from pygfe.cypher import persisted_query
+
+from pygfe.cypher import groups_classI
+from pygfe.cypher import groups_classII
+
+from pygfe.models.error import Error
+from pygfe.models.feature import Feature
+from pygfe.models.typing import Typing
+# from pygfe.models.gfe_call import GfeCall
+# from pygfe.models.gfe_typing import GfeTyping
+# from pygfe.models.allele_call import AlleleCall
+# from pygfe.models.feature_call import FeatureCall
+# from pygfe.models.typing_status import TypingStatus
+# from pygfe.models.ars_call import ArsCall
+# from pygfe.models.persisted import Persisted
+# from pygfe.models.persisted_data import PersistedData
+
+from py2neo import Node, Relationship
+import pandas as pa
 
 import os
 import glob
 import re
+import json
 
+import sys
+from Bio.Seq import Seq
+from Bio.Alphabet import IUPAC
+from Bio.SeqRecord import SeqRecord
+from BioSQL import BioSeqDatabase
+from Bio.SeqFeature import SeqFeature, FeatureLocation
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
+from collections import OrderedDict
+from Bio.Alphabet import IUPAC
+from py2neo import Graph
 
-from pygfe.feature_client.apis.features_api import FeaturesApi
-from pygfe.feature_client.api_client import ApiClient
-from pygfe.feature_client.rest import ApiException
-from pprint import pprint
-from pygfe.feature_client.models.feature import Feature
-from pygfe.feature_client.models.sequence import Sequence
-from pygfe.feature_client.models.feature_request import FeatureRequest
-
+flatten = lambda l: [item for sublist in l for item in sublist]
+is_gfe = lambda x: True if re.search("\d+-\d+-\d+", x) else False
 is_kir = lambda x: True if re.search("KIR", x) else False
-isutr = lambda f: True if re.search("UTR", f) else False
+is_classII = lambda x: True if re.search("HLA-D", x) else False
+is_classI = lambda x: True if re.search("HLA-\Dw", x) else False
+lc = lambda x: x.lower() if not re.search("UTR", x) else x.lower().replace("utr", "UTR")
+
+from pygfe.gfe import GFE
+from pygfe.act import ACT
+from pygfe.gfedb import GfeDB
+from pygfe.graph_search import GraphSearch
 
 
-class pyGFE(object):
+class pyGFE(ACT, GraphSearch):
     '''
-    Example:
-
-        >>> from Bio import SeqIO
-        >>> from BioSQL import BioSeqDatabase
-        >>> from seqann.sequence_annotation import BioSeqAnn
-        >>> from pygfe.pygfe import pyGFE
-        >>> seq_file = 'test_dq.fasta'
-        >>> gfe = pyGFE()
-        >>> server = BioSeqDatabase.open_database(driver="pymysql", user="root",
-        ...                                       passwd="", host="localhost",
-        ...                                      db="bioseqdb")
-        >>> seqann = BioSeqAnn(server=server)
-        >>> seq_rec = list(SeqIO.parse(seq_file, 'fasta'))[0]
-        >>> annotation = seqann.annotate(seq_rec, "HLA-DQB1")
-        >>> gfe = gfe.get_gfe(annotation, "HLA-DQB1")
-        >>> print(gfe)
-        HLA-DQB1w0-4-0-141-0-12-0-4-0-0-0-0-0
-
+    classdocs
     '''
-    def __init__(self, url="http://feature.nmdp-bioinformatics.org", verbose=False):
-        self.verbose = verbose
-        client = ApiClient(host=url)
-        api_instance = FeaturesApi(api_client=client)
-        self.api = api_instance
+    def __init__(self, url="http://feature.nmdp-bioinformatics.org",
+                 loci=['HLA-A', 'HLA-B', 'HLA-C',
+                       'HLA-DRB1', 'HLA-DQB1', 'HLA-DRB4',
+                       'HLA-DRB5', 'HLA-DPB1', 'HLA-DPA1',
+                       'HLA-DQA1', 'HLA-DRB3'],
+                 load_features=False, store_features=False,
+                 graph: Graph=None, persist: bool=False,
+                 seqann: BioSeqAnn=None,
+                 verbose=False,
+                 verbosity=1):
+        '''
+        Constructor
+        '''
+        # TODO: Add catch if seqann or graph aren't defined
+        self.gfe = GFE(store_features=store_features,
+                       load_features=load_features,
+                       url=url,
+                       loci=loci,
+                       verbose=verbose,
+                       verbosity=verbosity)
+        self.gfedb = GfeDB(graph=graph, persist=persist, verbose=verbose)
+        self.seqann = seqann
 
-        structures = {}
-        struct_order = {}
-        data_dir = os.path.dirname(__file__)
-        struture_files = glob.glob(data_dir + '/data/*.structure')
-        for inputfile in struture_files:
-            file_path = inputfile.split("/")
-            locus = file_path[len(file_path)-1].split(".")[0]
-            # TODO: add try
-            with open(inputfile, 'r') as f:
-                features_order = {}
-                features = {}
-                n = 0
-                for line in f:
-                    line = line.rstrip()
-                    [feature, rank] = line.split("\t")
-                    feature_name = "_".join([feature, rank])
-                    if feature == "three_prime_UTR" or feature == "five_prime_UTR":
-                        feature_name = feature
-                    n += 1
-                    features.update({feature_name: n})
-                    features_order.update({n: feature_name})
-                    if is_kir(locus):
-                        structures.update({locus: features})
-                        struct_order.update({locus: features_order})
-                    else:
-                        structures.update({"HLA-" + locus: features})
-                        struct_order.update({"HLA-" + locus: features_order})
-            f.close()
-        self.structures = structures
-        self.struct_order = struct_order
-
-    def get_gfe(self, annotation, locus):
-
-        features = []
-        accessions = {}
-        for feat in annotation.annotation:
-            if isutr(feat):
-                seq = str(annotation.annotation[feat].seq)
-                request = FeatureRequest(locus=locus,
-                                         term=feat,
-                                         rank=1,
-                                         sequence=seq)
-
-                feature = self.api.create_feature(body=request)
-                accessions.update({feat: feature.accession})
-                features.append(feature)
-            else:
-                term, rank = feat.split("_")
-                seq = str(annotation.annotation[feat].seq)
-                request = FeatureRequest(locus=locus,
-                                         term=term,
-                                         rank=rank,
-                                         sequence=seq)
-                try:
-                    feature = self.api.create_feature(body=request)
-                    accessions.update({feat: feature.accession})
-                    features.append(feature)
-                except ApiException as e:
-                    print("Exception when calling DefaultApi->create_feature: %s\n" % e)
-                    blank_feat = Feature(term=term, rank=rank, locus=locus,
-                                         sequence=seq)
-                    accessions.update({feat: 0})
-                    features.append(blank_feat)
-
-        gfe = self._make_gfe(accessions, locus)
-        return features, gfe
-
-    def get_sequence(self, gfe):
-
-        loc, accessions = gfe.split("w")
-        features = self._breakup_gfe(gfe)
-        feats = []
-        seqs = []
-        for f in features:
-            if int(features[f]) != 0:
-                if isutr(f):
-                    feat = self._seq(loc, f, 1,  features[f])
-                    seqs.append(feat.sequence)
-                    feats.append(feat)
-                else:
-
-                    feat = self._seq(loc, f.split("_")[0], f.split("_")[1],
-                                     features[f])
-                    seqs.append(feat.sequence)
-                    feats.append(feat)
-        seq = "".join(seqs)
-        sequence_o = Sequence(sequence=seq, structure=feats)
-        return sequence_o
-
-    def _seq(self, locus, term, rank, accession):
-        try:
-            feature = self.api.get_feature_by_path(locus,
-                                                   term,
-                                                   rank,
-                                                   accession)
-            return feature
-        except ApiException as e:
-            print("Exception when calling DefaultApi->get_feature_by_path: %s\n" % e)
-            return ''
-
-    def _breakup_gfe(self, gfe):
-        [locus, feature_accessions] = gfe.split("w")
-        accessions = feature_accessions.split("-")
-        i = 0
-        features = {}
-        for feature_rank in self.structures[locus]:
-            accession = accessions[i]
-            features.update({feature_rank: accession})
-            i += 1
-
-        return(features)
-
-    def _make_gfe(self, features, locus):
-
-        gfe_list = []
-        for feat in sorted(self.structures[locus],
-                           key=lambda k: self.structures[locus][k]):
-
-            acc = str(0)
-            if feat in features:
-                acc = str(features[feat])
-            gfe_list.append(acc)
-
-        gfea = '-'.join(gfe_list)
-        return locus + "w" + gfea
 
