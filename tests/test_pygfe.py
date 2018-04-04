@@ -54,7 +54,11 @@ from seqann.sequence_annotation import BioSeqAnn
 from BioSQL import BioSeqDatabase
 
 import pymysql
-
+import pandas as pd
+from pygfe.cypher import all_feats
+from pygfe.cypher import all_gfe2hla
+import pickle
+import time
 
 neo4jpass = 'gfedb'
 if os.getenv("NEO4JPASS"):
@@ -120,7 +124,7 @@ class TestPygfe(unittest.TestCase):
                                               passwd=biosqlpass,
                                               host=biosqlhost,
                                               db=biosqldb)
-        seqann = BioSeqAnn(server=server, align=True, verbose=False)
+        seqann = BioSeqAnn(server=server, verbose=False)
         #else:
         #    print
         #    seqann = BioSeqAnn()
@@ -128,15 +132,187 @@ class TestPygfe(unittest.TestCase):
                       seqann=seqann,
                       load_features=False,
                       verbose=False,
+                      load_all=True,
                       loci=["HLA-A"])
         self.assertIsInstance(pygfe, pyGFE)
         seqs = list(SeqIO.parse(self.data_dir + "/unknown_A.fasta", "fasta"))
         typing = pygfe.type_from_seq("HLA-A", str(seqs[1].seq))
-        print(typing)
         #self.assertEqual(typing.gfe, 'HLA-Aw770-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-4')
         self.assertEqual(typing.hla, 'HLA-A*01:01:01:01')
         self.assertEqual(typing.status, "novel")
         self.assertIsInstance(typing, Typing)
+        pass
+
+    def test_005_picklefiles(self):
+        graph = Graph(neo4jurl, user=neo4juser, password=neo4jpass,
+                      bolt=False)
+        #if conn():
+        server = BioSeqDatabase.open_database(driver="pymysql",
+                                              user=biosqluser,
+                                              passwd=biosqlpass,
+                                              host=biosqlhost,
+                                              db=biosqldb)
+        seqann = BioSeqAnn(server=server, verbose=False)
+
+        gfe = GFE()
+        #cached_feats = gfe.all_feats
+        # print("Finished loading cached_feats")
+        # pickle_service = "feature-service.pickle"
+        # with open(pickle_service, 'wb') as handle2:
+        #     pickle.dump(cached_feats, handle2, protocol=pickle.HIGHEST_PROTOCOL)
+
+        # feat_df = pd.DataFrame(graph.data(all_feats()))
+        # feat_df['ID'] = feat_df.apply(lambda row: ":".join([row['DB'],
+        #                                                     row['LOC'],
+        #                                                     str(row['RANK']),
+        #                                                     row['TERM'],
+        #                                                     row['SEQ']]),
+        #                               axis=1)
+        # feats = feat_df[['ID', 'ACCESSION']].set_index('ID').to_dict()['ACCESSION']
+
+        # print("Finished loading feats")
+        # pickle_feats = "unique_db-feats.pickle"
+        # with open(pickle_feats, 'wb') as handle1:
+        #     pickle.dump(feats, handle1, protocol=pickle.HIGHEST_PROTOCOL)
+
+        gfedb = GfeDB(graph=graph, persist=False, verbose=False)
+        act = ACT(gfedb=gfedb, seqann=seqann, load_gfe2hla=False,
+                  load_gfe2feat=True,
+                  load_seq2hla=False, gfe=gfe)
+
+        print("Finished loading all!!")
+
+        #gfe2hla = act.gfe2hla
+        #seq2hla = act.seq2hla
+        gfe2feat = act.gfe_feats
+
+        pickle_gfe2feat = "gfe2feat.pickle"
+        with open(pickle_gfe2feat, 'wb') as handle5:
+            pickle.dump(gfe2feat, handle5, protocol=pickle.HIGHEST_PROTOCOL)
+
+        # pickle_gfe2hla = "gfe2hla.pickle"
+        # with open(pickle_gfe2hla, 'wb') as handle3:
+        #     pickle.dump(gfe2hla, handle3, protocol=pickle.HIGHEST_PROTOCOL)
+
+        # pickle_seq2hla = "seq2hla.pickle"
+        # with open(pickle_seq2hla, 'wb') as handle4:
+        #     pickle.dump(seq2hla, handle4, protocol=pickle.HIGHEST_PROTOCOL)
+
+        pass
+
+    def test_003_loader1(self):
+        graph = Graph(neo4jurl, user=neo4juser, password=neo4jpass,
+                      bolt=False)
+        #if conn():
+        server = BioSeqDatabase.open_database(driver="pymysql",
+                                              user=biosqluser,
+                                              passwd=biosqlpass,
+                                              host=biosqlhost,
+                                              db=biosqldb)
+        seqann = BioSeqAnn(server=server, verbose=False)
+
+        pickle_file1 = "unique_db-feats.pickle"
+        pickle_file2 = "feature-service.pickle"
+        pickle_gfe2feat = "gfe2feat.pickle"
+        pickle_file3 = "gfe2hla.pickle"
+        pickle_file4 = "seq2hla.pickle"
+
+        with open(pickle_gfe2feat, 'rb') as handle1:
+            gfe_feats = pickle.load(handle1)
+
+        with open(pickle_file1, 'rb') as handle1:
+            feats = pickle.load(handle1)
+
+        with open(pickle_file2, 'rb') as handle2:
+            cached_feats = pickle.load(handle2)
+
+        with open(pickle_file3, 'rb') as handle3:
+            gfe2hla = pickle.load(handle3)
+
+        with open(pickle_file4, 'rb') as handle:
+            seq2hla = pickle.load(handle)
+
+        start = time.time()
+        pygfe = pyGFE(graph=graph,
+                      seqann=seqann,
+                      load_features=False,
+                      verbose=False,
+                      features=feats,
+                      seq2hla=seq2hla,
+                      gfe2hla=gfe2hla,
+                      gfe_feats=gfe_feats,
+                      cached_features=cached_feats,
+                      loci=["HLA-A"])
+        self.assertIsInstance(pygfe, pyGFE)
+        seqs = list(SeqIO.parse(self.data_dir + "/unknown_A.fasta", "fasta"))
+        typing1 = pygfe.type_from_seq("HLA-A", str(seqs[1].seq), "3.31.0")
+        typing2 = pygfe.type_from_seq("HLA-A", str(seqs[1].seq), "3.30.0")
+        end = time.time()
+        time_taken = end - start
+        print("TIME TAKEN: " + str(time_taken))
+        self.assertEqual(typing1.hla, 'HLA-A*01:01:01:01')
+        self.assertEqual(typing1.status, "novel")
+        self.assertIsInstance(typing1, Typing)
+        self.assertEqual(typing2.hla, 'HLA-A*01:01:01:01')
+        self.assertEqual(typing2.status, "novel")
+        self.assertIsInstance(typing2, Typing)
+        pass
+
+    def test_003_loader2(self):
+        start = time.time()
+        graph = Graph(neo4jurl, user=neo4juser, password=neo4jpass,
+                      bolt=False)
+        #if conn():
+        server = BioSeqDatabase.open_database(driver="pymysql",
+                                              user=biosqluser,
+                                              passwd=biosqlpass,
+                                              host=biosqlhost,
+                                              db=biosqldb)
+        seqann = BioSeqAnn(server=server, verbose=False)
+
+        pickle_file1 = "unique_db-feats.pickle"
+        pickle_file2 = "feature-service.pickle"
+        pickle_gfe2feat = "gfe2feat.pickle"
+        pickle_file3 = "gfe2hla.pickle"
+        pickle_file4 = "seq2hla.pickle"
+        with open(pickle_gfe2feat, 'rb') as handle1:
+            gfe_feats = pickle.load(handle1)
+
+        with open(pickle_file1, 'rb') as handle1:
+            feats = pickle.load(handle1)
+
+        with open(pickle_file2, 'rb') as handle2:
+            cached_feats = pickle.load(handle2)
+
+        with open(pickle_file3, 'rb') as handle3:
+            gfe2hla = pickle.load(handle3)
+
+        with open(pickle_file4, 'rb') as handle:
+            seq2hla = pickle.load(handle)
+
+        pygfe = pyGFE(graph=graph,
+                      seqann=seqann,
+                      load_features=False,
+                      verbose=False,
+                      features=feats,
+                      seq2hla=seq2hla,
+                      gfe2hla=gfe2hla,
+                      gfe_feats=gfe_feats,
+                      cached_features=cached_feats,
+                      loci=["HLA-A"])
+        self.assertIsInstance(pygfe, pyGFE)
+        seqs = list(SeqIO.parse(self.data_dir + "/known_A.fasta", "fasta"))
+        typing1 = pygfe.type_from_seq("HLA-A", str(seqs[0].seq), "3.30.0")
+        typing2 = pygfe.type_from_seq("HLA-A", str(seqs[0].seq), "3.31.0")
+        end = time.time()
+        time_taken = end - start
+        print("TIME TAKEN: " + str(time_taken))
+        self.assertEqual(typing2.hla, 'HLA-A*01:01:01:01')
+        self.assertEqual(typing2.status, "documented")
+        self.assertIsInstance(typing2, Typing)
+        self.assertEqual(typing1.hla, 'HLA-A*01:01:01:01')
+        self.assertEqual(typing1.status, "documented")
+        self.assertIsInstance(typing1, Typing)
         pass
 
     def test_001_load_features(self):

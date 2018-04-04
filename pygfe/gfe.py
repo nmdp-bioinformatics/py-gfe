@@ -29,6 +29,9 @@ import re
 import logging
 from pprint import pprint
 
+from pygfe.util import get_structures
+from pygfe.util import get_structorder
+
 from pygfe.feature_client.apis.features_api import FeaturesApi
 from pygfe.feature_client.api_client import ApiClient
 from pygfe.feature_client.rest import ApiException
@@ -71,6 +74,7 @@ class GFE(object):
                        'HLA-DRB5', 'HLA-DPB1', 'HLA-DPA1',
                        'HLA-DQA1', 'HLA-DRB3'],
                  load_features=False, store_features=False,
+                 cached_features=None,
                  verbose=False,
                  verbosity=1):
 
@@ -82,41 +86,17 @@ class GFE(object):
         client = ApiClient(host=url)
         api_instance = FeaturesApi(api_client=client)
         self.api = api_instance
-
-        structures = {}
-        struct_order = {}
         self.all_feats = {loc: {} for loc in loci}
-        data_dir = os.path.dirname(__file__)
-        struture_files = glob.glob(data_dir + '/data/*.structure')
-        for inputfile in struture_files:
-            file_path = inputfile.split("/")
-            locus = file_path[len(file_path)-1].split(".")[0]
-            # TODO: add try
-            with open(inputfile, 'r') as f:
-                features_order = {}
-                features = {}
-                n = 0
-                for line in f:
-                    line = line.rstrip()
-                    [feature, rank] = line.split("\t")
-                    feature_name = "_".join([feature, rank])
-                    if feature == "three_prime_UTR" or feature == "five_prime_UTR":
-                        feature_name = feature
-                    n += 1
-                    features.update({feature_name: n})
-                    features_order.update({n: feature_name})
-                    if is_kir(locus):
-                        structures.update({locus: features})
-                        struct_order.update({locus: features_order})
-                    else:
-                        structures.update({"HLA-" + locus: features})
-                        struct_order.update({"HLA-" + locus: features_order})
-            f.close()
-        self.structures = structures
-        self.struct_order = struct_order
+        self.structures = get_structures()
+        self.struct_order = get_structorder()
+
+        if cached_features:
+            if verbose:
+                logging.info("Using cached features")
+            self.all_feats = cached_features
 
         # Load all features from feature service
-        if load_features:
+        if load_features and not cached_features:
             if verbose:
                 logging.info("Loading features...")
 
@@ -176,7 +156,6 @@ class GFE(object):
         accessions = {}
         for feat in annotation.annotation:
             seq = str(annotation.annotation[feat].seq)
-
             # TODO: Drop this if statement
             if isutr(feat):
                 feat_str = ":".join([locus, str(1), feat, seq])
@@ -200,7 +179,6 @@ class GFE(object):
                     accessions.update({feat: accession})
                     features.append(feature)
                 else:
-
                     if self.verbose and self.verbosity > 2:
                         logging.info("Making FeatureRequest " + feat_str)
 
@@ -236,6 +214,7 @@ class GFE(object):
 
             else:
                 term, rank = feat.split("_")
+                feat = "-".join(feat.split("_"))
                 feat_str = ":".join([locus, str(rank), term, seq])
 
                 # If the feature has been loaded or stored
@@ -317,8 +296,7 @@ class GFE(object):
                     seqs.append(feat.sequence)
                     feats.append(feat)
                 else:
-
-                    feat = self._seq(loc, f.split("_")[0], f.split("_")[1],
+                    feat = self._seq(loc, f.split("-")[0], f.split("-")[1],
                                      features[f])
                     seqs.append(feat.sequence)
                     feats.append(feat)

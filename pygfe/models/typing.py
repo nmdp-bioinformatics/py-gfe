@@ -17,7 +17,7 @@ class Typing(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, seqdiff: List[Seqdiff]=None, protdiff: List[Seqdiff]=None, features: List[Feature]=None, gfe: str=None, hla: str=None, closest_gfe: str=None, full_gene_accession: int=None, differences: int=None, status: str=None, pygfe_version: str=None, gfedb_version: str=None, imgtdb_version: str=None):  # noqa: E501
+    def __init__(self, seqdiff: List[Seqdiff]=None, protdiff: List[Seqdiff]=None, novel_features: List[Feature]=None, features: List[Feature]=None, gfe: str=None, hla: str=None, closest_gfe: str=None, full_gene_accession: int=None, differences: int=None, status: str=None, seqann_version: str=None, pygfe_version: str=None, gfedb_version: str=None, imgtdb_version: str=None):  # noqa: E501
         """Typing - a model defined in Swagger
 
         :param seqdiff: The seqdiff of this Typing.  # noqa: E501
@@ -49,6 +49,7 @@ class Typing(Model):
             'seqdiff': List[Seqdiff],
             'protdiff': List[Seqdiff],
             'features': List[Feature],
+            'novel_features': List[Feature],
             'gfe': str,
             'hla': str,
             'closest_gfe': str,
@@ -57,13 +58,15 @@ class Typing(Model):
             'status': str,
             'pygfe_version': str,
             'gfedb_version': str,
-            'imgtdb_version': str
+            'imgtdb_version': str,
+            'seqann_version': str
         }
 
         self.attribute_map = {
             'seqdiff': 'seqdiff',
             'protdiff': 'protdiff',
             'features': 'features',
+            'novel_features': 'novel_features',
             'gfe': 'gfe',
             'hla': 'hla',
             'closest_gfe': 'closest_gfe',
@@ -72,12 +75,15 @@ class Typing(Model):
             'status': 'status',
             'pygfe_version': 'pygfe_version',
             'gfedb_version': 'gfedb_version',
-            'imgtdb_version': 'imgtdb_version'
+            'imgtdb_version': 'imgtdb_version',
+            'seqann_version': 'seqann_version'
         }
 
+        self._seqann_version = seqann_version
         self._seqdiff = seqdiff
         self._protdiff = protdiff
         self._features = features
+        self._novel_features = novel_features
         self._gfe = gfe
         self._hla = hla
         self._closest_gfe = closest_gfe
@@ -161,6 +167,27 @@ class Typing(Model):
         """
 
         self._features = features
+
+    @property
+    def novel_features(self) -> List[Feature]:
+        """Gets the novel_features of this Typing.
+
+
+        :return: The novel_features of this Typing.
+        :rtype: List[Feature]
+        """
+        return self._novel_features
+
+    @novel_features.setter
+    def novel_features(self, novel_features: List[Feature]):
+        """Sets the novel_features of this Typing.
+
+
+        :param novel_features: The novel_features of this Typing.
+        :type novel_features: List[Feature]
+        """
+
+        self._novel_features = novel_features
 
     @property
     def gfe(self) -> str:
@@ -329,6 +356,27 @@ class Typing(Model):
         """
 
         self._gfedb_version = gfedb_version
+
+    @property
+    def seqann_version(self) -> str:
+        """Gets the seqann_version of this Typing.
+
+
+        :return: The seqann_version of this Typing.
+        :rtype: str
+        """
+        return self._seqann_version
+
+    @seqann_version.setter
+    def seqann_version(self, seqann_version: str):
+        """Sets the seqann_version of this Typing.
+
+
+        :param seqann_version: The seqann_version of this Typing.
+        :type seqann_version: str
+        """
+
+        self._seqann_version = seqann_version
 
     @property
     def imgtdb_version(self) -> str:

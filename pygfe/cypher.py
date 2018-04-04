@@ -41,6 +41,33 @@ from typing import List, Dict
 # RETURN a.name,collect(distinct {number: number, seq: n.seq[number], rseq: RSEQ[number]})
 # LIMIT 10
 
+def all_gfe2feats() -> str:
+    query = "MATCH(gfe:GFE)-[r:HAS_FEATURE]-(feat:FEATURE)" \
+        + "RETURN r.imgt_release AS DB,gfe.name AS GFE," \
+        + "collect(distinct {term: feat.name, rank: feat.rank, accession: r.accession, sequence: feat.sequence}) AS FEATS"
+    return query
+
+
+def all_seq2hla() -> str:
+    query = "MATCH (hla:IMGT_HLA)-[f1:HAS_GFE]-(gfe:GFE)-[f2:HAS_SEQUENCE]-(seq:SEQUENCE) " \
+        + "WHERE f1.imgt_release = f2.imgt_release " \
+        + "RETURN DISTINCT f1.imgt_release AS DB,hla.locus AS LOC,hla.name AS HLA, gfe.name AS GFE, seq.sequence AS SEQ"
+    return query
+
+
+def all_gfe2hla() -> str:
+    query = "MATCH(hla:IMGT_HLA)-[r1:HAS_GFE]-(gfe:GFE)" \
+        + "RETURN DISTINCT r1.imgt_release AS DB,hla.locus AS LOC," \
+        + "hla.name AS HLA, gfe.name AS GFE"
+    return query
+
+
+def all_feats() -> str:
+    query = "MATCH(hla:IMGT_HLA)-[r1:HAS_FEATURE]-(feat:FEATURE)" \
+        + "RETURN DISTINCT hla.locus AS LOC,r1.imgt_release AS DB," \
+        + "feat.rank AS RANK,feat.name AS TERM,r1.accession AS ACCESSION,feat.sequence AS SEQ"
+    return query
+
 
 def search_hla_features(locus: str, gfe_feats: List) -> str:
 
@@ -128,12 +155,13 @@ def gfe_search(gfe: str) -> str:
     return(query)
 
 
-def similar_gfe_classII(gfe: str, exon2: int) -> str:
+def similar_gfe_classII(gfe: str, exon2: int, db: str) -> str:
     [locus, feature_accessions] = gfe.split("w")
     typing_query = "MATCH (hla:IMGT_HLA)-[r:HAS_GFE]-(gfe1:GFE)-[f1:HAS_FEATURE]-(feat1:FEATURE)" \
             + " WHERE gfe1.locus = \"" + locus + "\"" \
             + " AND f1.accession = \"" + exon2 + "\"" \
             + " AND feat1.name = \"EXON\"" \
+            + " AND r.imgt_release = \"" + str(db) + "\"" \
             + " AND feat1.rank = \"2\"" \
             + " WITH COLLECT( distinct {hla: hla.name, gfe: gfe1.name}) AS TYPING" \
             + " UNWIND TYPING AS HLA_GFE" \
@@ -141,7 +169,7 @@ def similar_gfe_classII(gfe: str, exon2: int) -> str:
     return(typing_query)
 
 
-def similar_gfe_classI(gfe: str, exon2: int, exon3: int) -> str:
+def similar_gfe_classI(gfe: str, exon2: int, exon3: int, db: str) -> str:
 
     [locus, feature_accessions] = gfe.split("w")
     typing_query = "MATCH (hla:IMGT_HLA)-[r:HAS_GFE]-(gfe1:GFE)-[f1:HAS_FEATURE]-(feat1:FEATURE)," \
@@ -149,6 +177,8 @@ def similar_gfe_classI(gfe: str, exon2: int, exon3: int) -> str:
             + " WHERE gfe1.locus = \"" + locus + "\"" \
             + " AND f1.accession = \"" + exon2 + "\"" \
             + " AND f2.accession = \"" + exon3 + "\"" \
+            + " AND r.imgt_release = \"" + str(db) + "\"" \
+            + " AND r2.imgt_release = \"" + str(db) + "\"" \
             + " AND feat1.name = \"EXON\"" \
             + " AND feat2.name = \"EXON\"" \
             + " AND feat1.rank = \"2\"" \

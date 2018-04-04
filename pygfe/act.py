@@ -54,6 +54,9 @@ import glob
 import re
 import json
 
+from typing import Dict
+import seqann
+
 import sys
 from Bio.Seq import Seq
 from Bio.Alphabet import IUPAC
@@ -64,9 +67,15 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from collections import OrderedDict
 from Bio.Alphabet import IUPAC
+from pandas import DataFrame
 
+import pygfe
 from pygfe.gfe import GFE
 from pygfe.gfedb import GfeDB
+
+from pygfe.cypher import all_gfe2hla
+from pygfe.cypher import all_seq2hla
+from pygfe.cypher import all_gfe2feats
 
 flatten = lambda l: [item for sublist in l for item in sublist]
 is_gfe = lambda x: True if re.search("\d+-\d+-\d+", x) else False
@@ -81,17 +90,51 @@ class ACT(object):
     '''
     classdocs
     '''
-
     def __init__(self, gfedb: GfeDB=None,
                  seqann: BioSeqAnn=None,
                  gfe: GFE=None,
+                 features: Dict=None,
+                 gfe2hla: Dict=None,
+                 gfe_feats: DataFrame=None,
+                 seq2hla: DataFrame=None,
+                 load_gfe2hla: bool=False,
+                 load_seq2hla: bool=False,
+                 load_gfe2feat: bool=False,
                  verbose: bool=False):
         '''
         Constructor
         '''
+        self.gfe_feats = gfe_feats
         self.gfe = gfe
         self.seqann = seqann
         self.gfedb = gfedb
+        self.features = features
+        self.gfe2hla = gfe2hla
+        self.seq2hla = seq2hla
+
+        if load_gfe2feat:
+            self.gfe_feats = pa.DataFrame(self.gfedb.graph.data(all_gfe2feats()))
+
+        if load_seq2hla:
+            self.seq2hla = pa.DataFrame(self.gfedb.graph.data(all_seq2hla()))
+
+        if load_gfe2hla:
+            tmp_gfe = {}
+            gfehla_df = pa.DataFrame(self.gfedb.graph.data(all_gfe2hla()))
+            for loc in gfehla_df['LOC'].unique().tolist():
+                if re.search("HLA-\D$", loc):
+                    loc_df = gfehla_df.loc[gfehla_df['LOC'] == loc]
+                    loc1 = self.gfe.structures[loc]['exon-2'] - 1
+                    loc2 = self.gfe.structures[loc]['exon-3'] - 1
+                    loc_df['EXON23'] = loc_df['GFE'].apply(lambda gfe: "-".join([gfe.split("-")[loc1],gfe.split("-")[loc2]]))
+                    tmp_gfe.update({loc: loc_df})
+
+                if is_classII(loc):
+                    loc_df = gfehla_df.loc[gfehla_df['LOC'] == loc]
+                    loc1 = self.gfe.structures[loc]['exon-2'] - 1
+                    loc_df['EXON2'] = loc_df['GFE'].apply(lambda gfe:gfe.split("-")[loc1])
+                    tmp_gfe.update({loc: loc_df})
+            self.gfe2hla = tmp_gfe
 
     # TODO: Make this come from the
     #       pygfe cache instead of making
@@ -104,20 +147,28 @@ class ACT(object):
         :param sequence: string containing sequence data.
         :return: GFEobject.
         """
-        # TODO: ** Only search for feats that weren't found
-        #       ** in the closest GFE
-        # TODO: Add dbversion
         unique = []
-        for feat in features:
-            feat_q = search_feature(feat.term.upper(),
-                                    feat.rank,
-                                    feat.sequence)
-            seq_features = pa.DataFrame(self.gfedb.graph.data(feat_q))
-            if seq_features.empty:
-                unique.append(feat)
+        imgtdb_version = ".".join([list(self.seqann.refdata.dbversion)[0],
+                                   "".join(list(self.seqann.refdata.dbversion)[1:3]),
+                                   list(self.seqann.refdata.dbversion)[3]])
+        if self.features:
+            print("USING LOADED FEATS: ", str(len(self.features)))
+            for feat in features:
+                rank = feat.rank if not isutr(feat.term) else 1
+                feat_str = ":".join([imgtdb_version, locus, str(rank), feat.term.upper(), feat.sequence])
+                if not feat_str in self.features:
+                    unique.append(feat)
+        else:
+            for feat in features:
+                feat_q = search_feature(feat.term.upper(),
+                                        feat.rank,
+                                        feat.sequence)
+                seq_features = pa.DataFrame(self.gfedb.graph.data(feat_q))
+                if seq_features.empty:
+                    unique.append(feat)
         return unique
 
-    def type_from_seq(self, locus, sequence):
+    def type_from_seq(self, locus, sequence, imgtdb_version):
         """
         creates GFE from HLA sequence and locus
 
@@ -127,31 +178,19 @@ class ACT(object):
         :return: GFEobject.
         """
         ac_object = Typing()
-        # {'closest_gfe': None,
-        #  'differences': None,
-        #  'features': None,
-        #  'full_gene_accession': None,
-        #  'gfe': None,
-        #  'gfedb_version': None,
-        #  'hla': None,
-        #  'imgtdb_version': None,
-        #  'protdiff': None,
-        #  'pygfe_version': None,
-        #  'seqdiff': None,
-        #  'status': None}
-
-        # TODO: ADD VERSION
-        ac_object.imgtdb_version = 'imgt'
-        ac_object.pygfe_version = 'tv1'
-        ac_object.gfedb_version = 'gfedbv'
+        ac_object.imgtdb_version = imgtdb_version
+        ac_object.pygfe_version = pygfe.__version__
+        ac_object.gfedb_version = '0.0.2'
+        ac_object.seqann_version = seqann.__version__
         sequence = sequence.upper()
-        sequence_typing = self.sequence_lookup(locus, sequence)
+        sequence_typing = self.sequence_lookup(locus, sequence, ac_object.imgtdb_version)
         if sequence_typing:
             ac_object.status = "documented"
             ac_object.hla = sequence_typing[0]
             ac_object.gfe = sequence_typing[1]
             ac_object.closest_gfe = sequence_typing[1]
             ac_object.features = sequence_typing[2]
+            # TODO: Add full gene accession
             #ac_object.full_gene = Feature(rank="1", sequence=sequence, term="gene")
             return ac_object
         else:
@@ -163,25 +202,23 @@ class ACT(object):
                                           sequence=f.sequence,
                                           term=f.term) for f in gfe_o['structure']]
             novel_features = self.unique_features(ac_object.features, locus)
-            related_gfe = self.gfe_lookup(ac_object.gfe, ac_object.features)
             if(len(novel_features) != 0):
+                print("NOVEL FEATURES: ", str(len(novel_features)))
+                ac_object.novel_features = novel_features
                 ac_object.status = "novel"
             else:
                 ac_object.status = "novel_combination"
 
-            if related_gfe:
-                ac_object.hla = related_gfe[0]
-                ac_object.closest_gfe = related_gfe[1]
-            else:
-                similar_results = self.find_similar(ac_object.gfe, ac_object.features)
-                ac_object.hla = similar_results[0]
-                ac_object.closest_gfe = similar_results[1]
+            similar_results = self.find_similar(ac_object.gfe,
+                                                ac_object.features,
+                                                ac_object.imgtdb_version)
+            ac_object.hla = similar_results[0]
+            ac_object.closest_gfe = similar_results[1]
+            if self.seqann.align:
                 ac_object.seqdiff = self.diff_seq(similar_results[0],
                                                   annotation)
                 ac_object.differences = len(ac_object.seqdiff)
-                ac_object.imgtdb_version = ".".join([list(self.seqann.refdata.dbversion)[0],
-                                                     "".join(list(self.seqann.refdata.dbversion)[1:3]),
-                                                     list(self.seqann.refdata.dbversion)[3]])
+
             return ac_object
 
     def diff_seq(self, ref_allele, annotation):
@@ -189,16 +226,6 @@ class ACT(object):
         feat_order = list(self.gfe.struct_order[locus].keys())
         feat_order.sort()
         db = self.seqann.refdata.dbversion
-
-        #print(feat_order)
-        #print(self.gfe.struct_order[locus])
-        #print(annotation.aligned)
-        #print(annotation.aligned[self.gfe.struct_order[locus][0]])
-
-        #print("ALIGNED:")
-        #print(annotation.aligned)
-        # TODO: Only load structures in one place
-        # TODO: Add to cypher sub module
         dbv = ".".join([list(db)[0], "".join(list(db)[1:3]), list(db)[3]])
         aligned_seq = list("".join([annotation.aligned[self.gfe.struct_order[locus][i]] for i in feat_order]))
         seq_l = ",".join(["".join(["\"", s, "\""]) for s in aligned_seq])
@@ -267,7 +294,7 @@ class ACT(object):
         #         self.persist_typing(ac_object)
         return ac_object
 
-    def sequence_lookup(self, locus, sequence):
+    def sequence_lookup(self, locus, sequence, imgtdb_version):
         """
         Looks up sequence from
 
@@ -276,23 +303,51 @@ class ACT(object):
 
         :return: GFEobject.
         """
-        lookup_query = sequence_search(locus, sequence)
-        sequence_data = pa.DataFrame(self.gfedb.graph.data(lookup_query))
-        if not sequence_data.empty:
-            features = list()
-            gfe = list(set([x for x in sequence_data["GFE"]]))
-            hla = list(set([x for x in sequence_data["HLA"]]))
-            seq_features = pa.DataFrame(self.gfedb.graph.data(get_features(gfe[0])))
-            for i in range(0, len(seq_features['term'])):
-                feature = Feature(accession=seq_features['accession'][i],
-                                  rank=seq_features['rank'][i],
-                                  sequence=seq_features['sequence'][i],
-                                  term=lc(seq_features['term'][i]))
-                features.append(feature)
-            #typing = Typing(hla=hla[0], related_gfe=[GfeTyping(gfe=gfe[0], shares=features, features_shared=len(features))])
-            return [hla[0], gfe[0], features]
+
+        # TODO: add dbversion!
+        if not self.seq2hla.empty:
+            df = self.seq2hla[(self.seq2hla['DB'] == imgtdb_version) & (self.seq2hla['LOC'] == locus) & (self.seq2hla['SEQ'] == sequence)]
+            if not df.empty:
+                hla = df['HLA'].tolist()[0]
+                gfe = df['GFE'].tolist()[0]
+                features = []
+                feats = self.gfe_feats[(self.gfe_feats['GFE'] == gfe) &
+                                          (self.gfe_feats['DB'] == imgtdb_version)]['FEATS'].tolist()[0]
+                if feats and len(feats) > 0:
+                    for feat in feats:
+                        feature = Feature(accession=feat['accession'],
+                                          rank=feat['rank'],
+                                          sequence=feat['sequence'],
+                                          term=lc(feat['term']))
+                        features.append(feature)
+                else:
+                    seq_features = pa.DataFrame(self.gfedb.graph.data(get_features(gfe)))
+                    for i in range(0, len(seq_features['term'])):
+                        feature = Feature(accession=seq_features['accession'][i],
+                                          rank=seq_features['rank'][i],
+                                          sequence=seq_features['sequence'][i],
+                                          term=lc(seq_features['term'][i]))
+                        features.append(feature)
+                return [hla, gfe, features]
         else:
-            return
+            print("WTF LOOKING UP HERE")
+            lookup_query = sequence_search(locus, sequence)
+            sequence_data = pa.DataFrame(self.gfedb.graph.data(lookup_query))
+            if not sequence_data.empty:
+                features = list()
+                gfe = list(set([x for x in sequence_data["GFE"]]))
+                hla = list(set([x for x in sequence_data["HLA"]]))
+                seq_features = pa.DataFrame(self.gfedb.graph.data(get_features(gfe[0])))
+                for i in range(0, len(seq_features['term'])):
+                    feature = Feature(accession=seq_features['accession'][i],
+                                      rank=seq_features['rank'][i],
+                                      sequence=seq_features['sequence'][i],
+                                      term=lc(seq_features['term'][i]))
+                    features.append(feature)
+                #typing = Typing(hla=hla[0], related_gfe=[GfeTyping(gfe=gfe[0], shares=features, features_shared=len(features))])
+                return [hla[0], gfe[0], features]
+            else:
+                return
 
     def gfe_create(self, locus, sequence):
         """
@@ -317,6 +372,7 @@ class ACT(object):
 
         :return: GFEobject.
         """
+        print("WTF gfe_lookup")
         gfe_data = pa.DataFrame(self.gfedb.graph.data(gfe_search(gfe)))
         if not gfe_data.empty:
             return ["/".join(gfe_data["HLA"]), gfe]
@@ -337,7 +393,7 @@ class ACT(object):
             return self.loci[loc]
         return
 
-    def find_similar(self, gfe, features):
+    def find_similar(self, gfe, features, imgtdb_version):
         """
         creates GFE from HLA sequence and locus
 
@@ -349,14 +405,22 @@ class ACT(object):
         if is_classI(gfe):
             gfe_dict = self.breakup_gfe(gfe)
             [locus, feature_accessions] = gfe.split("w")
-            cypher = similar_gfe_classI(gfe, gfe_dict["EXON-2"],
-                                        gfe_dict["EXON-3"])
-            similar_data = pa.DataFrame(self.gfedb.graph.data(cypher))
-            return self.create_typing(similar_data, gfe, features)
+            if self.gfe2hla:
+                exon23 = "-".join([gfe_dict["EXON-2"], gfe_dict["EXON-3"]])
+                df = self.gfe2hla[locus][(self.gfe2hla[locus]['EXON23'] == exon23) & (self.gfe2hla[locus]['DB'] == imgtdb_version)][['GFE', 'HLA']]\
+                         .reset_index()
+                return self.create_typing(df, gfe, features)
+            else:
+                cypher = similar_gfe_classI(gfe, gfe_dict["EXON-2"],
+                                            gfe_dict["EXON-3"],
+                                            imgtdb_version)
+                similar_data = pa.DataFrame(self.gfedb.graph.data(cypher))
+                return self.create_typing(similar_data, gfe, features)
         elif is_classII(gfe):
             gfe_dict = self.breakup_gfe(gfe)
             [locus, feature_accessions] = gfe.split("w")
-            cypher = similar_gfe_classII(gfe, gfe_dict["EXON-2"])
+            cypher = similar_gfe_classII(gfe, gfe_dict["EXON_2"],
+                                         imgtdb_version)
             similar_data = pa.DataFrame(self.gfedb.graph.data(cypher))
             return self.create_typing(similar_data, gfe, features)
         elif is_kir(gfe):
@@ -386,17 +450,6 @@ class ACT(object):
                 gfes, hla = gfes_hla[0], gfes_hla[1]
                 hla_list.append(hla)
                 gfe_list.append(gfes)
-                # if hla not in found_hla:
-                #     #matched_features = self.matching_features(gfe, gfes, self.map_structures(features))
-                #     #hla_typing = Typing(hla=hla, related_gfe=[GfeTyping(gfe=gfes, features_shared=len(matched_features))])
-                #     #found_hla.update({hla: hla_typing})
-                #     hla_list.append(hla)
-                #     gfe_list.append(gfes)
-                # else:
-                #     hla_typing = found_hla[hla]
-                #     #matched_features = self.matching_features(gfe, gfes, self.map_structures(features))
-                #     #hla_typing.related_gfe.append(GfeTyping(gfe=gfes, features_shared=len(matched_features)))
-                #     found_hla.update({hla: hla_typing})
             return ["/".join(hla_list), "/".join(gfe_list)]
         else:
             return list()
@@ -462,14 +515,11 @@ class ACT(object):
         gfe_parts1 = self.breakup_gfe(gfe1)
         gfe_parts2 = self.breakup_gfe(gfe2)
         feat_list = list()
-        print(structures)
-        print("--")
-        print(gfe_parts1)
         for feat in gfe_parts1:
             if feat in gfe_parts2:
                 if gfe_parts1[feat] == gfe_parts2[feat]:
-                    if not feat == "FIVE_PRIME_UTR" and not feat == "THREE_PRIME_UTR":
-                        feat_term, feat_rank = feat.split('-')
+                    if not feat.upper == "FIVE_PRIME_UTR" and not feat == "THREE_PRIME_UTR":
+                        feat_term, feat_rank = feat.split('_')
                         shared_feat = Feature(term=feat_term.upper(), rank=feat_rank, sequence=structures[feat], accession=gfe_parts1[feat])
                         feat_list.append(shared_feat)
                     else:
@@ -488,12 +538,13 @@ class ACT(object):
         """
         [locus, feature_accessions] = gfe.split("w")
         accessions = feature_accessions.split("-")
+        print("GFE: ", gfe)
         i = 0
         features = {}
         for feature_rank in self.gfedb.structures[locus]:
             accession = accessions[i]
             if feature_rank.upper() == "FIVE_PRIME_UTR" or feature_rank.upper() == "THREE_PRIME_UTR":
-                features.update({"-".join([feature_rank, str(1)]).upper(): accession})
+                features.update({"_".join([feature_rank, str(1)]).upper(): accession})
             else:
                 features.update({feature_rank.upper(): accession})
             i += 1

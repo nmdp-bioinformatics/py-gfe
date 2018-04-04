@@ -55,6 +55,7 @@ import glob
 import re
 import json
 
+from pygfe.util import get_structures
 
 flatten = lambda l: [item for sublist in l for item in sublist]
 is_gfe = lambda x: True if re.search("\d+-\d+-\d+", x) else False
@@ -100,41 +101,17 @@ class GfeDB(object):
         self.persist = persist
         self.graph = graph
 
-        # TODO: Have version in pyGFE()
+        # TODO: pull version from graph
         self.version = ''
-        structure_dir = os.path.dirname(__file__)
-        struture_files = glob.glob(structure_dir + '/data/*.structure')
-        self.structures = {}
-        for inputfile in struture_files:
-            file_path = inputfile.split("/")
-            locus = file_path[len(file_path)-1].split(".")[0]
-            # TODO: add try
-            with open(inputfile, 'r') as f:
-                features_order = {}
-                features = {}
-                n = 0
-                for line in f:
-                    line = line.rstrip()
-                    [feature, rank] = line.split("\t")
-                    feature_name = "-".join([feature.upper(), rank])
-                    if feature == "three_prime_UTR" or feature == "five_prime_UTR":
-                        feature_name = feature
-                    n += 1
-                    features.update({feature_name: n})
-                    features_order.update({n: feature_name})
-                    if is_kir(locus):
-                        self.structures.update({locus: features})
-                    else:
-                        self.structures.update({"HLA-" + locus: features})
-            f.close()
+        self.structures = get_structures()
 
-        max_hlaid = pd.DataFrame(self.graph.data('MATCH(hla:IMGT_HLA) RETURN max(hla.alleleId) AS ID'))
-        max_gfeid = pd.DataFrame(self.graph.data('MATCH(gfe:GFE) RETURN max(gfe.alleleId) AS ID'))
-        max_fullseqid = pd.DataFrame(self.graph.data('MATCH(seq:SEQUENCE) RETURN max(seq.sequenceId) AS ID'))
-        max_sequenceid = pd.DataFrame(self.graph.data('MATCH(feat:FEATURE) RETURN max(feat.sequenceId) AS ID'))
+        # max_hlaid = pd.DataFrame(self.graph.data('MATCH(hla:IMGT_HLA) RETURN max(hla.alleleId) AS ID'))
+        # max_gfeid = pd.DataFrame(self.graph.data('MATCH(gfe:GFE) RETURN max(gfe.alleleId) AS ID'))
+        # max_fullseqid = pd.DataFrame(self.graph.data('MATCH(seq:SEQUENCE) RETURN max(seq.sequenceId) AS ID'))
+        # max_sequenceid = pd.DataFrame(self.graph.data('MATCH(feat:FEATURE) RETURN max(feat.sequenceId) AS ID'))
 
-        self.max_alleleid = max(max_hlaid['ID'][0], max_gfeid['ID'][0])
-        self.max_seqid = max(max_fullseqid['ID'][0], max_sequenceid['ID'][0])
+        #self.max_alleleid = max(max_hlaid['ID'][0], max_gfeid['ID'][0])
+        #self.max_seqid = max(max_fullseqid['ID'][0], max_sequenceid['ID'][0])
 
         # TODO: change out
         self.admin = ''
