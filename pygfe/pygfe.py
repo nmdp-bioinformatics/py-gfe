@@ -64,6 +64,8 @@ from collections import OrderedDict
 from Bio.Alphabet import IUPAC
 from py2neo import Graph
 
+from typing import Dict
+
 flatten = lambda l: [item for sublist in l for item in sublist]
 is_gfe = lambda x: True if re.search("\d+-\d+-\d+", x) else False
 is_kir = lambda x: True if re.search("KIR", x) else False
@@ -71,10 +73,18 @@ is_classII = lambda x: True if re.search("HLA-D", x) else False
 is_classI = lambda x: True if re.search("HLA-\Dw", x) else False
 lc = lambda x: x.lower() if not re.search("UTR", x) else x.lower().replace("utr", "UTR")
 
+from pandas import DataFrame
 from pygfe.gfe import GFE
 from pygfe.act import ACT
 from pygfe.gfedb import GfeDB
+from pygfe.cypher import all_gfe2hla
+from pygfe.cypher import all_seq2hla
 from pygfe.graph_search import GraphSearch
+import logging
+
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    datefmt='%m/%d/%Y %I:%M:%S %p',
+                    level=logging.INFO)
 
 
 class pyGFE(ACT, GraphSearch):
@@ -89,7 +99,13 @@ class pyGFE(ACT, GraphSearch):
                  load_features=False, store_features=False,
                  graph: Graph=None, persist: bool=False,
                  seqann: BioSeqAnn=None,
-                 verbose=False,
+                 features: Dict=None,
+                 cached_features: Dict=None,
+                 verbose: bool=False,
+                 pid: str="NA",
+                 gfe2hla: Dict=None,
+                 gfe_feats: DataFrame=None,
+                 seq2hla: DataFrame=None,
                  verbosity=1):
         '''
         Constructor
@@ -97,11 +113,18 @@ class pyGFE(ACT, GraphSearch):
         # TODO: Add catch if seqann or graph aren't defined
         self.gfe = GFE(store_features=store_features,
                        load_features=load_features,
+                       cached_features=cached_features,
                        url=url,
                        loci=loci,
                        verbose=verbose,
                        verbosity=verbosity)
         self.gfedb = GfeDB(graph=graph, persist=persist, verbose=verbose)
+        self.logger = logging.getLogger("Logger." + __name__)
+        self.logname = "ID {:<10} - ".format(str(pid))
         self.seqann = seqann
-
+        self.features = features
+        self.gfe2hla = gfe2hla
+        self.seq2hla = seq2hla
+        self.gfe_feats = gfe_feats
+        self.verbose = verbose
 
