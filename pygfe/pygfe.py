@@ -82,6 +82,10 @@ from pygfe.cypher import all_seq2hla
 from pygfe.graph_search import GraphSearch
 import logging
 
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    datefmt='%m/%d/%Y %I:%M:%S %p',
+                    level=logging.INFO)
+
 
 class pyGFE(ACT, GraphSearch):
     '''
@@ -122,4 +126,5 @@ class pyGFE(ACT, GraphSearch):
         self.gfe2hla = gfe2hla
         self.seq2hla = seq2hla
         self.gfe_feats = gfe_feats
+        self.verbose = verbose
 

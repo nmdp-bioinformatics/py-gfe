@@ -92,6 +92,11 @@ biosqlport = 3306
 if os.getenv("BIOSQLPORT"):
     biosqlport = os.getenv("BIOSQLPORT")
 
+import logging
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    datefmt='%m/%d/%Y %I:%M:%S %p',
+                    level=logging.INFO)
+
 
 def conn():
     try:
@@ -209,7 +214,7 @@ class TestPygfe(unittest.TestCase):
                                               passwd=biosqlpass,
                                               host=biosqlhost,
                                               db=biosqldb)
-        seqann = BioSeqAnn(server=server, verbose=False)
+        seqann = BioSeqAnn(server=server, verbose=True)
 
         pickle_file1 = "unique_db-feats.pickle"
         pickle_file2 = "feature-service.pickle"
@@ -236,7 +241,7 @@ class TestPygfe(unittest.TestCase):
         pygfe = pyGFE(graph=graph,
                       seqann=seqann,
                       load_features=False,
-                      verbose=False,
+                      verbose=True,
                       features=feats,
                       seq2hla=seq2hla,
                       gfe2hla=gfe2hla,
@@ -246,7 +251,7 @@ class TestPygfe(unittest.TestCase):
         self.assertIsInstance(pygfe, pyGFE)
         seqs = list(SeqIO.parse(self.data_dir + "/unknown_A.fasta", "fasta"))
         typing1 = pygfe.type_from_seq("HLA-A", str(seqs[1].seq), "3.31.0")
-        typing2 = pygfe.type_from_seq("HLA-A", str(seqs[1].seq), "3.30.0")
+        typing2 = pygfe.type_from_seq("HLA-A", str(seqs[1].seq), "3.20.0")
         end = time.time()
         time_taken = end - start
         print("TIME TAKEN: " + str(time_taken))
@@ -340,14 +345,65 @@ class TestPygfe(unittest.TestCase):
         self.assertFalse('HLA-Z' in pygfe.gfe.structures)
         pass
 
-    # def test_001_pygfe_load(self):
-    #     pygfe = pyGFE(verbose=True, load_features=True)
-    #     self.assertIsInstance(pygfe, pyGFE)
-    #     self.assertGreater(len(pygfe.structures), 1)
-    #     self.assertGreater(len(pygfe.all_feats), 1)
-    #     self.assertTrue('HLA-A' in pygfe.structures)
-    #     self.assertFalse('HLA-Z' in pygfe.structures)
-    #     pass
+    def test_004_hml(self):
+        start = time.time()
+        graph = Graph(neo4jurl, user=neo4juser, password=neo4jpass,
+                      bolt=False)
+        #if conn():
+        server = BioSeqDatabase.open_database(driver="pymysql",
+                                              user=biosqluser,
+                                              passwd=biosqlpass,
+                                              host=biosqlhost,
+                                              db=biosqldb)
+        seqann = BioSeqAnn(server=server, dbversion="3200", verbose=True)
+
+        pickle_file1 = "unique_db-feats.pickle"
+        pickle_file2 = "feature-service.pickle"
+        pickle_gfe2feat = "gfe2feat.pickle"
+        pickle_file3 = "gfe2hla.pickle"
+        pickle_file4 = "seq2hla.pickle"
+        with open(pickle_gfe2feat, 'rb') as handle1:
+            gfe_feats = pickle.load(handle1)
+
+        with open(pickle_file1, 'rb') as handle1:
+            feats = pickle.load(handle1)
+
+        with open(pickle_file2, 'rb') as handle2:
+            cached_feats = pickle.load(handle2)
+
+        with open(pickle_file3, 'rb') as handle3:
+            gfe2hla = pickle.load(handle3)
+
+        with open(pickle_file4, 'rb') as handle:
+            seq2hla = pickle.load(handle)
+
+        pygfe = pyGFE(graph=graph,
+                      seqann=seqann,
+                      load_features=False,
+                      verbose=True,
+                      features=feats,
+                      seq2hla=seq2hla,
+                      gfe2hla=gfe2hla,
+                      gfe_feats=gfe_feats,
+                      cached_features=cached_feats,
+                      loci=["HLA-DPB1"])
+        self.assertIsInstance(pygfe, pyGFE)
+        seqs = list(SeqIO.parse(self.data_dir + "/hml_fail.fasta", "fasta"))
+        typing1 = pygfe.type_from_seq("HLA-DPB1", str(seqs[6].seq), "3.20.0")
+        #typing2 = pygfe.type_from_seq("HLA-DRB1", str(seqs[0].seq), "3.31.0")
+        #typing2 = pygfe.type_from_seq("HLA-DRB1", str(seqs[0].seq), "3.31.0")
+        #end = time.time()
+        #time_taken = end - start
+        print(typing1)
+        #print("=====")
+        #print(typing2)
+        # self.assertEqual(typing2.hla, 'HLA-A*01:01:01:01')
+        # self.assertEqual(typing2.status, "documented")
+        #self.assertIsInstance(typing2, Typing)
+        # self.assertEqual(typing1.hla, 'HLA-A*01:01:01:01')
+        # self.assertEqual(typing1.status, "documented")
+        self.assertIsInstance(typing1, Typing)
+        pass
 
 
 

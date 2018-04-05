@@ -42,6 +42,10 @@ from pygfe.feature_client.models.feature_request import FeatureRequest
 is_kir = lambda x: True if re.search("KIR", x) else False
 isutr = lambda f: True if re.search("UTR", f) else False
 
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    datefmt='%m/%d/%Y %I:%M:%S %p',
+                    level=logging.INFO)
+
 
 class GFE(object):
     '''

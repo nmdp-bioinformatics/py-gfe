@@ -87,6 +87,10 @@ is_classI = lambda x: True if re.search("HLA-\Dw", x) else False
 lc = lambda x: x.lower() if not re.search("UTR", x) else x.lower().replace("utr", "UTR")
 isutr = lambda f: True if re.search("UTR", f) else False
 
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    datefmt='%m/%d/%Y %I:%M:%S %p',
+                    level=logging.INFO)
+
 
 class ACT(object):
     '''
@@ -178,6 +182,7 @@ class ACT(object):
 
         :return: GFEobject.
         """
+        # TODO: Add full gene accession
         ac_object = Typing()
         ac_object.imgtdb_version = "".join(imgtdb_version.split("."))
         ac_object.pygfe_version = pygfe.__version__
@@ -186,29 +191,27 @@ class ACT(object):
         sequence = sequence.upper()
         sequence_typing = self.sequence_lookup(locus, sequence, ac_object.imgtdb_version)
         if sequence_typing:
-            if self.verbose:
-                self.logger.info(self.logname + locus + " sequence documented for " + imgtdb_version)
             ac_object.status = "documented"
             ac_object.hla = sequence_typing[0]
             ac_object.gfe = sequence_typing[1]
             ac_object.closest_gfe = sequence_typing[1]
             ac_object.features = sequence_typing[2]
-            # TODO: Add full gene accession
-            #ac_object.full_gene = Feature(rank="1", sequence=sequence, term="gene")
+
+            if self.verbose:
+                self.logger.info(self.logname + locus + " sequence documented for " + imgtdb_version + " | " + ac_object.gfe + " = " + ac_object.hla)
+
             return ac_object
         else:
             # time GFE creation
             time_start = time.time()
-
-            try:
-                gfe_o = self.gfe_create(locus, sequence)
-            except:
-                self.logger.error(self.logname + "FAILED TO CREATE GFE!!")
-                ac_object.status = "FAILED"
-                ac_object.hla = "NA"
-                ac_object.closest_gfe = "NA"
+            gfe_o = self.gfe_create(locus, sequence)
+            if not 'annotation' in gfe_o:
+                self.logger.error(self.logname + "Failed to create annotation!!")
                 ac_object.gfe = "NA"
+                ac_object.status = "Failed_Annotation"
                 ac_object.features = []
+                ac_object.closest_gfe = "NA"
+                ac_object.hla = "NA"
                 return ac_object
 
             if self.verbose:
@@ -388,8 +391,11 @@ class ACT(object):
         """
         seq_rec = SeqRecord(Seq(sequence, IUPAC.unambiguous_dna), id="GFE")
         annotation = self.seqann.annotate(seq_rec, locus)
-        features, gfe = self.gfe.get_gfe(annotation, locus)
-        return {'gfe': gfe, 'structure': features, 'annotation': annotation}
+        if not hasattr(annotation, 'annotation'):
+            return annotation
+        else:
+            features, gfe = self.gfe.get_gfe(annotation, locus)
+            return {'gfe': gfe, 'structure': features, 'annotation': annotation}
 
     def gfe_lookup(self, gfe, features):
         """
@@ -477,7 +483,9 @@ class ACT(object):
             hla_sim = {similar_data['GFE'][i]: similar_data['HLA'][i]
                        for i in range(0, len(similar_data['GFE']))}
             max_val = max(gfe_sim.values())
+            print(max_val)
             max_gfes = [[g, hla_sim[g]] for g in gfe_sim.keys() if gfe_sim[g] == max_val]
+            print(max_gfes)
             hla_list = []
             gfe_list = []
             for gfes_hla in max_gfes:
@@ -594,10 +602,11 @@ class ACT(object):
         :return: GFEobject.
         """
         count = 0
-        gfe1_parts = gfe1.split("-")
-        gfe2_parts = gfe2.split("-")
+        gfe1_parts = gfe1.split("w")[1].split("-")
+        gfe2_parts = gfe2.split("w")[1].split("-")
         for i in range(0, len(gfe1_parts)):
-            if gfe1_parts[i] == gfe2_parts[i]:
+            if gfe1_parts[i] == gfe2_parts[i] and \
+                    not str(gfe1_parts[i]) == str(0):
                 count += 1
 
         return count
