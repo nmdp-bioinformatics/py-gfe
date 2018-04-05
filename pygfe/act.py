@@ -49,6 +49,7 @@ from pygfe.models.seqdiff import Seqdiff
 from py2neo import Node, Relationship
 import pandas as pa
 
+import time
 import os
 import glob
 import re
@@ -76,6 +77,7 @@ from pygfe.gfedb import GfeDB
 from pygfe.cypher import all_gfe2hla
 from pygfe.cypher import all_seq2hla
 from pygfe.cypher import all_gfe2feats
+import logging
 
 flatten = lambda l: [item for sublist in l for item in sublist]
 is_gfe = lambda x: True if re.search("\d+-\d+-\d+", x) else False
@@ -100,6 +102,7 @@ class ACT(object):
                  load_gfe2hla: bool=False,
                  load_seq2hla: bool=False,
                  load_gfe2feat: bool=False,
+                 pid: str="NA",
                  verbose: bool=False):
         '''
         Constructor
@@ -111,6 +114,8 @@ class ACT(object):
         self.features = features
         self.gfe2hla = gfe2hla
         self.seq2hla = seq2hla
+        self.logger = logging.getLogger("Logger." + __name__)
+        self.logname = "ID {:<10} - ".format(str(pid))
 
         if load_gfe2feat:
             self.gfe_feats = pa.DataFrame(self.gfedb.graph.data(all_gfe2feats()))
@@ -124,14 +129,14 @@ class ACT(object):
             for loc in gfehla_df['LOC'].unique().tolist():
                 if re.search("HLA-\D$", loc):
                     loc_df = gfehla_df.loc[gfehla_df['LOC'] == loc]
-                    loc1 = self.gfe.structures[loc]['exon-2'] - 1
-                    loc2 = self.gfe.structures[loc]['exon-3'] - 1
+                    loc1 = self.gfe.structures[loc]['exon-2']
+                    loc2 = self.gfe.structures[loc]['exon-3']
                     loc_df['EXON23'] = loc_df['GFE'].apply(lambda gfe: "-".join([gfe.split("-")[loc1],gfe.split("-")[loc2]]))
                     tmp_gfe.update({loc: loc_df})
 
                 if is_classII(loc):
                     loc_df = gfehla_df.loc[gfehla_df['LOC'] == loc]
-                    loc1 = self.gfe.structures[loc]['exon-2'] - 1
+                    loc1 = self.gfe.structures[loc]['exon-2']
                     loc_df['EXON2'] = loc_df['GFE'].apply(lambda gfe:gfe.split("-")[loc1])
                     tmp_gfe.update({loc: loc_df})
             self.gfe2hla = tmp_gfe
@@ -139,7 +144,7 @@ class ACT(object):
     # TODO: Make this come from the
     #       pygfe cache instead of making
     #       a bunch of calls to the GFE DB
-    def unique_features(self, features, locus):
+    def unique_features(self, features, locus, imgtdb_version):
         """
         creates GFE from HLA sequence and locus
 
@@ -148,11 +153,7 @@ class ACT(object):
         :return: GFEobject.
         """
         unique = []
-        imgtdb_version = ".".join([list(self.seqann.refdata.dbversion)[0],
-                                   "".join(list(self.seqann.refdata.dbversion)[1:3]),
-                                   list(self.seqann.refdata.dbversion)[3]])
         if self.features:
-            print("USING LOADED FEATS: ", str(len(self.features)))
             for feat in features:
                 rank = feat.rank if not isutr(feat.term) else 1
                 feat_str = ":".join([imgtdb_version, locus, str(rank), feat.term.upper(), feat.sequence])
@@ -178,13 +179,15 @@ class ACT(object):
         :return: GFEobject.
         """
         ac_object = Typing()
-        ac_object.imgtdb_version = imgtdb_version
+        ac_object.imgtdb_version = "".join(imgtdb_version.split("."))
         ac_object.pygfe_version = pygfe.__version__
         ac_object.gfedb_version = '0.0.2'
         ac_object.seqann_version = seqann.__version__
         sequence = sequence.upper()
         sequence_typing = self.sequence_lookup(locus, sequence, ac_object.imgtdb_version)
         if sequence_typing:
+            if self.verbose:
+                self.logger.info(self.logname + locus + " sequence documented for " + imgtdb_version)
             ac_object.status = "documented"
             ac_object.hla = sequence_typing[0]
             ac_object.gfe = sequence_typing[1]
@@ -194,31 +197,58 @@ class ACT(object):
             #ac_object.full_gene = Feature(rank="1", sequence=sequence, term="gene")
             return ac_object
         else:
-            gfe_o = self.gfe_create(locus, sequence)
+            # time GFE creation
+            time_start = time.time()
+
+            try:
+                gfe_o = self.gfe_create(locus, sequence)
+            except:
+                self.logger.error(self.logname + "FAILED TO CREATE GFE!!")
+                ac_object.status = "FAILED"
+                ac_object.hla = "NA"
+                ac_object.closest_gfe = "NA"
+                ac_object.gfe = "NA"
+                ac_object.features = []
+                return ac_object
+
+            if self.verbose:
+                time_taken = int(time.time() - time_start)
+                self.logger.info(self.logname + " gfe_create time for " + locus + " "
+                             + imgtdb_version + " = " + str(time_taken) + " minutes")
             annotation = gfe_o['annotation']
             ac_object.gfe = gfe_o['gfe']
             ac_object.features = [Feature(accession=f.accession,
                                           rank=f.rank,
                                           sequence=f.sequence,
                                           term=f.term) for f in gfe_o['structure']]
-            novel_features = self.unique_features(ac_object.features, locus)
+            novel_features = self.unique_features(ac_object.features, locus, ac_object.imgtdb_version)
             if(len(novel_features) != 0):
-                print("NOVEL FEATURES: ", str(len(novel_features)))
+                if self.verbose:
+                    self.logger.info(self.logname + " # novel features = "
+                                 + str(len(novel_features)))
                 ac_object.novel_features = novel_features
                 ac_object.status = "novel"
             else:
+                self.logger.info(self.logname + " novel combination")
                 ac_object.status = "novel_combination"
 
             similar_results = self.find_similar(ac_object.gfe,
                                                 ac_object.features,
                                                 ac_object.imgtdb_version)
-            ac_object.hla = similar_results[0]
-            ac_object.closest_gfe = similar_results[1]
-            if self.seqann.align:
-                ac_object.seqdiff = self.diff_seq(similar_results[0],
-                                                  annotation)
-                ac_object.differences = len(ac_object.seqdiff)
-
+            if similar_results:
+                ac_object.hla = similar_results[0]
+                ac_object.closest_gfe = similar_results[1]
+                if self.seqann.align:
+                    if self.verbose:
+                        self.logger.info(self.logname + " finding sequence differences")
+                    ac_object.seqdiff = self.diff_seq(similar_results[0],
+                                                      annotation)
+                    ac_object.differences = len(ac_object.seqdiff)
+            else:
+                ac_object.hla = "NA"
+                ac_object.closest_gfe = "NA"
+                if self.verbose:
+                    self.logger.warn(self.logname + " No allele call made!")
             return ac_object
 
     def diff_seq(self, ref_allele, annotation):
@@ -303,7 +333,6 @@ class ACT(object):
 
         :return: GFEobject.
         """
-
         # TODO: add dbversion!
         if not self.seq2hla.empty:
             df = self.seq2hla[(self.seq2hla['DB'] == imgtdb_version) & (self.seq2hla['LOC'] == locus) & (self.seq2hla['SEQ'] == sequence)]
@@ -330,7 +359,6 @@ class ACT(object):
                         features.append(feature)
                 return [hla, gfe, features]
         else:
-            print("WTF LOOKING UP HERE")
             lookup_query = sequence_search(locus, sequence)
             sequence_data = pa.DataFrame(self.gfedb.graph.data(lookup_query))
             if not sequence_data.empty:
@@ -372,7 +400,7 @@ class ACT(object):
 
         :return: GFEobject.
         """
-        print("WTF gfe_lookup")
+        #print("WTF gfe_lookup")
         gfe_data = pa.DataFrame(self.gfedb.graph.data(gfe_search(gfe)))
         if not gfe_data.empty:
             return ["/".join(gfe_data["HLA"]), gfe]
@@ -419,10 +447,16 @@ class ACT(object):
         elif is_classII(gfe):
             gfe_dict = self.breakup_gfe(gfe)
             [locus, feature_accessions] = gfe.split("w")
-            cypher = similar_gfe_classII(gfe, gfe_dict["EXON_2"],
-                                         imgtdb_version)
-            similar_data = pa.DataFrame(self.gfedb.graph.data(cypher))
-            return self.create_typing(similar_data, gfe, features)
+            if self.gfe2hla:
+                exon2 = gfe_dict["EXON-2"]
+                df = self.gfe2hla[locus][(self.gfe2hla[locus]['EXON2'] == exon2) & (self.gfe2hla[locus]['DB'] == imgtdb_version)][['GFE', 'HLA']]\
+                         .reset_index()
+                return self.create_typing(df, gfe, features)                
+            else:
+                cypher = similar_gfe_classII(gfe, gfe_dict["EXON-2"],
+                                             imgtdb_version)
+                similar_data = pa.DataFrame(self.gfedb.graph.data(cypher))
+                return self.create_typing(similar_data, gfe, features)
         elif is_kir(gfe):
             return self.find_gfe_kir(gfe, features)
         else:
@@ -538,7 +572,7 @@ class ACT(object):
         """
         [locus, feature_accessions] = gfe.split("w")
         accessions = feature_accessions.split("-")
-        print("GFE: ", gfe)
+        #print("GFE: ", gfe)
         i = 0
         features = {}
         for feature_rank in self.gfedb.structures[locus]:

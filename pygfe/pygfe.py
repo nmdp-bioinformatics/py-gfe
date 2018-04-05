@@ -80,6 +80,7 @@ from pygfe.gfedb import GfeDB
 from pygfe.cypher import all_gfe2hla
 from pygfe.cypher import all_seq2hla
 from pygfe.graph_search import GraphSearch
+import logging
 
 
 class pyGFE(ACT, GraphSearch):
@@ -96,7 +97,8 @@ class pyGFE(ACT, GraphSearch):
                  seqann: BioSeqAnn=None,
                  features: Dict=None,
                  cached_features: Dict=None,
-                 verbose=False,
+                 verbose: bool=False,
+                 pid: str="NA",
                  gfe2hla: Dict=None,
                  gfe_feats: DataFrame=None,
                  seq2hla: DataFrame=None,
@@ -113,6 +115,8 @@ class pyGFE(ACT, GraphSearch):
                        verbose=verbose,
                        verbosity=verbosity)
         self.gfedb = GfeDB(graph=graph, persist=persist, verbose=verbose)
+        self.logger = logging.getLogger("Logger." + __name__)
+        self.logname = "ID {:<10} - ".format(str(pid))
         self.seqann = seqann
         self.features = features
         self.gfe2hla = gfe2hla

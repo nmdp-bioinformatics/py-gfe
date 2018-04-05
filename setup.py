@@ -38,7 +38,12 @@ requirements = [
     'certifi',
     'pytz',
     'six',
-    'urllib3'
+    'urllib3',
+    'pandas',
+    'seqann',
+    'biopython',
+    'PyMySQL',
+    'py2neo'
 ]
 
 test_requirements = [
@@ -52,7 +57,7 @@ test_requirements = [
 
 setup(
     name='pygfe',
-    version='0.0.14',
+    version='0.0.15',
     description="Python package for converting sequence annotations to gene feature enumerations (GFE).",
     long_description=readme + '\n\n' + history,
     author="Mike Halagan",

@@ -144,7 +144,7 @@ class TestPygfe(unittest.TestCase):
         pass
 
     def test_005_picklefiles(self):
-        graph = Graph(neo4jurl, user=neo4juser, password=neo4jpass,
+        graph = Graph("http://ec2-34-207-175-160.compute-1.amazonaws.com:80", user=neo4juser, password=neo4jpass,
                       bolt=False)
         #if conn():
         server = BioSeqDatabase.open_database(driver="pymysql",
@@ -161,42 +161,42 @@ class TestPygfe(unittest.TestCase):
         # with open(pickle_service, 'wb') as handle2:
         #     pickle.dump(cached_feats, handle2, protocol=pickle.HIGHEST_PROTOCOL)
 
-        # feat_df = pd.DataFrame(graph.data(all_feats()))
-        # feat_df['ID'] = feat_df.apply(lambda row: ":".join([row['DB'],
-        #                                                     row['LOC'],
-        #                                                     str(row['RANK']),
-        #                                                     row['TERM'],
-        #                                                     row['SEQ']]),
-        #                               axis=1)
-        # feats = feat_df[['ID', 'ACCESSION']].set_index('ID').to_dict()['ACCESSION']
+        feat_df = pd.DataFrame(graph.data(all_feats()))
+        feat_df['ID'] = feat_df.apply(lambda row: ":".join([row['DB'],
+                                                            row['LOC'],
+                                                            str(row['RANK']),
+                                                            row['TERM'],
+                                                            row['SEQ']]),
+                                      axis=1)
+        feats = feat_df[['ID', 'ACCESSION']].set_index('ID').to_dict()['ACCESSION']
 
-        # print("Finished loading feats")
-        # pickle_feats = "unique_db-feats.pickle"
-        # with open(pickle_feats, 'wb') as handle1:
-        #     pickle.dump(feats, handle1, protocol=pickle.HIGHEST_PROTOCOL)
+        print("Finished loading feats")
+        pickle_feats = "unique_db-feats.pickle"
+        with open(pickle_feats, 'wb') as handle1:
+            pickle.dump(feats, handle1, protocol=pickle.HIGHEST_PROTOCOL)
 
         gfedb = GfeDB(graph=graph, persist=False, verbose=False)
-        act = ACT(gfedb=gfedb, seqann=seqann, load_gfe2hla=False,
+        act = ACT(gfedb=gfedb, seqann=seqann, load_gfe2hla=True,
                   load_gfe2feat=True,
-                  load_seq2hla=False, gfe=gfe)
+                  load_seq2hla=True, gfe=gfe)
 
         print("Finished loading all!!")
 
-        #gfe2hla = act.gfe2hla
-        #seq2hla = act.seq2hla
+        gfe2hla = act.gfe2hla
+        seq2hla = act.seq2hla
         gfe2feat = act.gfe_feats
 
         pickle_gfe2feat = "gfe2feat.pickle"
         with open(pickle_gfe2feat, 'wb') as handle5:
             pickle.dump(gfe2feat, handle5, protocol=pickle.HIGHEST_PROTOCOL)
 
-        # pickle_gfe2hla = "gfe2hla.pickle"
-        # with open(pickle_gfe2hla, 'wb') as handle3:
-        #     pickle.dump(gfe2hla, handle3, protocol=pickle.HIGHEST_PROTOCOL)
+        pickle_gfe2hla = "gfe2hla.pickle"
+        with open(pickle_gfe2hla, 'wb') as handle3:
+            pickle.dump(gfe2hla, handle3, protocol=pickle.HIGHEST_PROTOCOL)
 
-        # pickle_seq2hla = "seq2hla.pickle"
-        # with open(pickle_seq2hla, 'wb') as handle4:
-        #     pickle.dump(seq2hla, handle4, protocol=pickle.HIGHEST_PROTOCOL)
+        pickle_seq2hla = "seq2hla.pickle"
+        with open(pickle_seq2hla, 'wb') as handle4:
+            pickle.dump(seq2hla, handle4, protocol=pickle.HIGHEST_PROTOCOL)
 
         pass
 
@@ -302,7 +302,7 @@ class TestPygfe(unittest.TestCase):
                       loci=["HLA-A"])
         self.assertIsInstance(pygfe, pyGFE)
         seqs = list(SeqIO.parse(self.data_dir + "/known_A.fasta", "fasta"))
-        typing1 = pygfe.type_from_seq("HLA-A", str(seqs[0].seq), "3.30.0")
+        typing1 = pygfe.type_from_seq("HLA-A", str(seqs[0].seq), "3.20.0")
         typing2 = pygfe.type_from_seq("HLA-A", str(seqs[0].seq), "3.31.0")
         end = time.time()
         time_taken = end - start
