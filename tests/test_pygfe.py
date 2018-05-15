@@ -156,7 +156,8 @@ class TestPygfe(unittest.TestCase):
                                               user=biosqluser,
                                               passwd=biosqlpass,
                                               host=biosqlhost,
-                                              db=biosqldb)
+                                              db=biosqldb,
+                                              port=biosqlport)
         seqann = BioSeqAnn(server=server, verbose=False)
 
         gfe = GFE()
@@ -213,7 +214,8 @@ class TestPygfe(unittest.TestCase):
                                               user=biosqluser,
                                               passwd=biosqlpass,
                                               host=biosqlhost,
-                                              db=biosqldb)
+                                              db=biosqldb,
+                                              port=3307)
         seqann = BioSeqAnn(server=server, verbose=True)
 
         pickle_file1 = "unique_db-feats.pickle"
@@ -346,7 +348,7 @@ class TestPygfe(unittest.TestCase):
         pass
 
     def test_004_hml(self):
-        start = time.time()
+        #start = time.time()
         graph = Graph(neo4jurl, user=neo4juser, password=neo4jpass,
                       bolt=False)
         #if conn():
@@ -354,7 +356,69 @@ class TestPygfe(unittest.TestCase):
                                               user=biosqluser,
                                               passwd=biosqlpass,
                                               host=biosqlhost,
-                                              db=biosqldb)
+                                              db=biosqldb,
+                                              port=3307)
+        seqann = BioSeqAnn(server=server, dbversion="3190", verbose=True)
+
+        pickle_file1 = "unique_db-feats.pickle"
+        pickle_file2 = "feature-service.pickle"
+        pickle_gfe2feat = "gfe2feat.pickle"
+        pickle_file3 = "gfe2hla.pickle"
+        pickle_file4 = "seq2hla.pickle"
+        with open(pickle_gfe2feat, 'rb') as handle1:
+            gfe_feats = pickle.load(handle1)
+
+        with open(pickle_file1, 'rb') as handle1:
+            feats = pickle.load(handle1)
+
+        with open(pickle_file2, 'rb') as handle2:
+            cached_feats = pickle.load(handle2)
+
+        with open(pickle_file3, 'rb') as handle3:
+            gfe2hla = pickle.load(handle3)
+
+        with open(pickle_file4, 'rb') as handle:
+            seq2hla = pickle.load(handle)
+
+        pygfe = pyGFE(graph=graph,
+                      seqann=seqann,
+                      load_features=False,
+                      verbose=True,
+                      features=feats,
+                      seq2hla=seq2hla,
+                      gfe2hla=gfe2hla,
+                      gfe_feats=gfe_feats,
+                      cached_features=cached_feats,
+                      loci=["HLA-C"])
+        self.assertIsInstance(pygfe, pyGFE)
+        seqs = list(SeqIO.parse(self.data_dir + "/hml_fail.fasta", "fasta"))
+        typing1 = pygfe.type_from_seq("HLA-C", str(seqs[1].seq), "3.19.0")
+        #typing2 = pygfe.type_from_seq("HLA-DRB1", str(seqs[0].seq), "3.31.0")
+        #typing2 = pygfe.type_from_seq("HLA-DRB1", str(seqs[0].seq), "3.31.0")
+        #end = time.time()
+        #time_taken = end - start
+        print(typing1)
+        #print("=====")
+        #print(typing2)
+        # self.assertEqual(typing2.hla, 'HLA-A*01:01:01:01')
+        # self.assertEqual(typing2.status, "documented")
+        #self.assertIsInstance(typing2, Typing)
+        # self.assertEqual(typing1.hla, 'HLA-A*01:01:01:01')
+        # self.assertEqual(typing1.status, "documented")
+        self.assertIsInstance(typing1, Typing)
+        pass
+
+    def test_005_A(self):
+        #start = time.time()
+        graph = Graph(neo4jurl, user=neo4juser, password=neo4jpass,
+                      bolt=False)
+        #if conn():
+        server = BioSeqDatabase.open_database(driver="pymysql",
+                                              user=biosqluser,
+                                              passwd=biosqlpass,
+                                              host=biosqlhost,
+                                              db=biosqldb,
+                                              port=3307)
         seqann = BioSeqAnn(server=server, dbversion="3200", verbose=True)
 
         pickle_file1 = "unique_db-feats.pickle"
@@ -386,10 +450,10 @@ class TestPygfe(unittest.TestCase):
                       gfe2hla=gfe2hla,
                       gfe_feats=gfe_feats,
                       cached_features=cached_feats,
-                      loci=["HLA-DPB1"])
+                      loci=["HLA-DQB1"])
         self.assertIsInstance(pygfe, pyGFE)
-        seqs = list(SeqIO.parse(self.data_dir + "/hml_fail.fasta", "fasta"))
-        typing1 = pygfe.type_from_seq("HLA-DPB1", str(seqs[6].seq), "3.20.0")
+        seqs = list(SeqIO.parse(self.data_dir + "/A_fail.fasta", "fasta"))
+        typing1 = pygfe.type_from_seq("HLA-DQB1", str(seqs[1].seq), "3.20.0")
         #typing2 = pygfe.type_from_seq("HLA-DRB1", str(seqs[0].seq), "3.31.0")
         #typing2 = pygfe.type_from_seq("HLA-DRB1", str(seqs[0].seq), "3.31.0")
         #end = time.time()
@@ -404,6 +468,70 @@ class TestPygfe(unittest.TestCase):
         # self.assertEqual(typing1.status, "documented")
         self.assertIsInstance(typing1, Typing)
         pass
+
+    def test_006_align(self):
+
+        graph = Graph(neo4jurl, user=neo4juser, password=neo4jpass,
+                      bolt=False)
+        #if conn():
+        server = BioSeqDatabase.open_database(driver="pymysql",
+                                              user=biosqluser,
+                                              passwd=biosqlpass,
+                                              host=biosqlhost,
+                                              db=biosqldb,
+                                              port=3307)
+        seqann = BioSeqAnn(align=True, server=server, dbversion="3310", verbose=True)
+
+        pickle_file1 = "unique_db-feats.pickle"
+        pickle_file2 = "feature-service.pickle"
+        pickle_gfe2feat = "gfe2feat.pickle"
+        pickle_file3 = "gfe2hla.pickle"
+        pickle_file4 = "seq2hla.pickle"
+        with open(pickle_gfe2feat, 'rb') as handle1:
+            gfe_feats = pickle.load(handle1)
+
+        with open(pickle_file1, 'rb') as handle1:
+            feats = pickle.load(handle1)
+
+        with open(pickle_file2, 'rb') as handle2:
+            cached_feats = pickle.load(handle2)
+
+        with open(pickle_file3, 'rb') as handle3:
+            gfe2hla = pickle.load(handle3)
+
+        with open(pickle_file4, 'rb') as handle:
+            seq2hla = pickle.load(handle)
+
+        pygfe = pyGFE(graph=graph,
+                      seqann=seqann,
+                      load_features=False,
+                      verbose=True,
+                      features=feats,
+                      seq2hla=seq2hla,
+                      gfe2hla=gfe2hla,
+                      gfe_feats=gfe_feats,
+                      cached_features=cached_feats,
+                      loci=["HLA-A"])
+        self.assertIsInstance(pygfe, pyGFE)
+        seqs = list(SeqIO.parse(self.data_dir + "/align_tests.fasta", "fasta"))
+        typing1 = pygfe.type_from_seq("HLA-A", str(seqs[0].seq), "3.31.0")
+        typing2 = pygfe.type_from_seq("HLA-A", str(seqs[1].seq), "3.31.0")
+        typing3 = pygfe.type_from_seq("HLA-A", str(seqs[2].seq), "3.31.0")
+        typing4 = pygfe.type_from_seq("HLA-A", str(seqs[3].seq), "3.31.0")
+        self.assertEqual(typing1.hla, 'HLA-A*02:01:01:12')
+        self.assertEqual(typing2.hla, 'HLA-A*02:01:01:12')
+        self.assertEqual(typing3.hla, 'HLA-A*02:01:01:12')
+        self.assertEqual(typing4.hla, 'HLA-A*02:01:01:12')
+        #end = time.time()
+        #time_taken = end - start
+        #print(typing1)
+        #print(typing1.aligned.keys())
+        #print(typing1.novel_features)
+        #difss = pygfe.hla_seqdiff("HLA-A","3.31.0","HLA-A*01:01:01:01","HLA-A*01:01:01:07")
+
+        #self.assertIsInstance(typing1, Typing)
+        pass
+
 
 
 

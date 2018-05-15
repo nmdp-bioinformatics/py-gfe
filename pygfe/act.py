@@ -37,14 +37,6 @@ from pygfe.models.error import Error
 from pygfe.models.typing import Typing
 from pygfe.models.feature import Feature
 from pygfe.models.seqdiff import Seqdiff
-# from pygfe.models.gfe_call import GfeCall
-# from pygfe.models.gfe_typing import GfeTyping
-# from pygfe.models.allele_call import AlleleCall
-# from pygfe.models.feature_call import FeatureCall
-# from pygfe.models.typing_status import TypingStatus
-# from pygfe.models.ars_call import ArsCall
-# from pygfe.models.persisted import Persisted
-# from pygfe.models.persisted_data import PersistedData
 
 from py2neo import Node, Relationship
 import pandas as pa
@@ -77,6 +69,8 @@ from pygfe.gfedb import GfeDB
 from pygfe.cypher import all_gfe2hla
 from pygfe.cypher import all_seq2hla
 from pygfe.cypher import all_gfe2feats
+from pygfe.cypher import hla_seqdiff
+
 import logging
 
 flatten = lambda l: [item for sublist in l for item in sublist]
@@ -144,6 +138,19 @@ class ACT(object):
                     loc_df['EXON2'] = loc_df['GFE'].apply(lambda gfe:gfe.split("-")[loc1])
                     tmp_gfe.update({loc: loc_df})
             self.gfe2hla = tmp_gfe
+
+    def hla_seqdiff(self, locus, imgtdb_version, typ1, typ2):
+        diff_data = pa.DataFrame(self.gfedb.graph.data(hla_seqdiff(locus, imgtdb_version, typ1, typ2)))
+        diffs = []
+        for i in range(0, len(diff_data)):
+            index = diff_data['POS'][i]
+            diff_feat = self.seqann.refdata.align_coordinates[locus.split("-")[1]][index]
+            ref_seq = diff_data['VAR2'][i]
+            in_seq = diff_data['VAR1'][i]
+            relative_location = index + self.seqann.refdata.location[locus]
+            diff = Seqdiff(term=diff_feat, location=str(relative_location), ref=ref_seq, inseq=in_seq)
+            diffs.append(diff)
+        return diffs
 
     # TODO: Make this come from the
     #       pygfe cache instead of making
@@ -254,13 +261,19 @@ class ACT(object):
                     self.logger.warn(self.logname + " No allele call made!")
             return ac_object
 
+    def rename_feat(self, f):
+        if isutr(f):
+            return f
+        else:
+            return "_".join(f.split("-"))
+
     def diff_seq(self, ref_allele, annotation):
         locus = ref_allele.split("*")[0]
         feat_order = list(self.gfe.struct_order[locus].keys())
         feat_order.sort()
         db = self.seqann.refdata.dbversion
         dbv = ".".join([list(db)[0], "".join(list(db)[1:3]), list(db)[3]])
-        aligned_seq = list("".join([annotation.aligned[self.gfe.struct_order[locus][i]] for i in feat_order]))
+        aligned_seq = list("".join([annotation.aligned[self.rename_feat(self.gfe.struct_order[locus][i])] for i in feat_order]))
         seq_l = ",".join(["".join(["\"", s, "\""]) for s in aligned_seq])
         query = "MATCH (a:IMGT_HLA)-[r:HAS_ALIGNMENT]-(n:GEN_ALIGN) " \
                 + "WHERE a.locus = \"" + locus + "\" " \
@@ -272,7 +285,6 @@ class ACT(object):
                 + "WITH DISTINCT number,RSEQ,n " \
                 + "WHERE NOT(n.seq[number] = RSEQ[number]) "\
                 + "RETURN number, n.seq[number] AS REF, RSEQ[number] AS SEQ"
-
         diff_data = pa.DataFrame(self.gfedb.graph.data(query))
         diffs = []
         for i in range(0, len(diff_data)):
@@ -478,14 +490,21 @@ class ACT(object):
         :return: GFEobject.
         """
         if not similar_data.empty:
-            gfe_sim = {sim_gfe: self.calcDiff(sim_gfe, gfe)
+            gfe_sim = {sim_gfe: self.calcSim(sim_gfe, gfe)
+                       for sim_gfe in similar_data['GFE']}
+            gfe_diff = {sim_gfe: self.calcDiff(sim_gfe, gfe)
                        for sim_gfe in similar_data['GFE']}
             hla_sim = {similar_data['GFE'][i]: similar_data['HLA'][i]
                        for i in range(0, len(similar_data['GFE']))}
             max_val = max(gfe_sim.values())
-            print(max_val)
+            min_val = min(gfe_diff.values())
+
+            # TODO: Add more complex logic here about 
             max_gfes = [[g, hla_sim[g]] for g in gfe_sim.keys() if gfe_sim[g] == max_val]
-            print(max_gfes)
+            min_gfes = [[g, hla_sim[g]] for g in gfe_sim.keys() if gfe_diff[g] == min_val]
+            diff_max = [g[0] for g in max_gfes if gfe_diff[g[0]] > 0]
+            if len(diff_max) == len(max_gfes) and len(min_gfes) == 1 and min_val == 0:
+                max_gfes = min_gfes
             hla_list = []
             gfe_list = []
             for gfes_hla in max_gfes:
@@ -580,7 +599,6 @@ class ACT(object):
         """
         [locus, feature_accessions] = gfe.split("w")
         accessions = feature_accessions.split("-")
-        #print("GFE: ", gfe)
         i = 0
         features = {}
         for feature_rank in self.gfedb.structures[locus]:
@@ -591,6 +609,25 @@ class ACT(object):
                 features.update({feature_rank.upper(): accession})
             i += 1
         return(features)
+
+    def calcSim(self, gfe1, gfe2):
+        """
+        creates GFE from HLA sequence and locus
+
+        :param locus: string containing HLA locus.
+        :param sequence: string containing sequence data.
+
+        :return: GFEobject.
+        """
+        count = 0
+        gfe1_parts = gfe1.split("w")[1].split("-")
+        gfe2_parts = gfe2.split("w")[1].split("-")
+        for i in range(0, len(gfe1_parts)):
+            if gfe1_parts[i] == gfe2_parts[i] and \
+                    not str(gfe1_parts[i]) == str(0):
+                count += 1
+
+        return count
 
     def calcDiff(self, gfe1, gfe2):
         """
@@ -605,7 +642,7 @@ class ACT(object):
         gfe1_parts = gfe1.split("w")[1].split("-")
         gfe2_parts = gfe2.split("w")[1].split("-")
         for i in range(0, len(gfe1_parts)):
-            if gfe1_parts[i] == gfe2_parts[i] and \
+            if gfe1_parts[i] != gfe2_parts[i] and \
                     not str(gfe1_parts[i]) == str(0):
                 count += 1
 
