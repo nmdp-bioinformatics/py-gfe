@@ -256,7 +256,6 @@ class TestPygfe(unittest.TestCase):
         typing2 = pygfe.type_from_seq("HLA-A", str(seqs[1].seq), "3.20.0")
         end = time.time()
         time_taken = end - start
-        print("TIME TAKEN: " + str(time_taken))
         self.assertEqual(typing1.hla, 'HLA-A*01:01:01:01')
         self.assertEqual(typing1.status, "novel")
         self.assertIsInstance(typing1, Typing)
