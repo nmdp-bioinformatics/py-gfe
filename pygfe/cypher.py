@@ -6,6 +6,24 @@ Created on Feb 8, 2017
 
 from typing import List, Dict
 
+
+def hla_seqdiff(locus: str, db: str, typing1: str, typing2: str):
+    query = "MATCH (a:IMGT_HLA)-[r:HAS_ALIGNMENT]-(n:GEN_ALIGN)," \
+            + "(a2:IMGT_HLA)-[r2:HAS_ALIGNMENT]-(n2:GEN_ALIGN)" \
+            + " WHERE a.locus = \"" + locus + "\"" \
+            + " AND a2.locus = \"" + locus + "\"" \
+            + " AND a2.name = \"" + typing2 + "\"" \
+            + " AND a.name = \"" + typing1 + "\"" \
+            + " AND r2.imgt_release = \"" + db + "\"" \
+            + " AND r.imgt_release = \"" + db + "\"" \
+            + " WITH [x in range(0,size(n.seq)-1) | x] AS ind,n,n2" \
+            + " UNWIND ind AS number" \
+            + " WITH DISTINCT number,n,n2" \
+            + " WHERE NOT(n.seq[number] = n2.seq[number])" \
+            + " RETURN number AS POS, n.seq[number] AS VAR1, n2.seq[number] AS VAR2"
+    print(query)
+    return query
+
 # def hla_seqdiff(typing1: str, typing2: str) -> str:
 
 

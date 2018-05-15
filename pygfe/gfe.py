@@ -200,7 +200,7 @@ class GFE(object):
                         accessions.update({feat: feature.accession})
                         features.append(feature)
                     except ApiException as e:
-                        self.logger.warn(self.logname + "Exception when calling DefaultApi->create_feature" + e)
+                        self.logger.error(self.logname + "Exception when calling DefaultApi->create_feature" + e)
                         blank_feat = Feature(term=feat, rank=1, locus=locus,
                                              sequence=seq)
                         accessions.update({feat: 0})
@@ -255,7 +255,7 @@ class GFE(object):
                         accessions.update({feat: feature.accession})
                         features.append(feature)
                     except ApiException as e:
-                        self.logger.warn(self.logname + "Exception when calling DefaultApi->create_feature %e" + e)
+                        self.logger.error(self.logname + "Exception when calling DefaultApi->create_feature %e" + e)
                         blank_feat = Feature(term=term, rank=rank, locus=locus,
                                              sequence=seq)
                         accessions.update({feat: 0})
