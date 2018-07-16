@@ -175,6 +175,7 @@ class ACT(object):
                 feat_q = search_feature(feat.term.upper(),
                                         feat.rank,
                                         feat.sequence)
+
                 seq_features = pa.DataFrame(self.gfedb.graph.data(feat_q))
                 if seq_features.empty:
                     unique.append(feat)
@@ -268,6 +269,9 @@ class ACT(object):
             return "_".join(f.split("-"))
 
     def diff_seq(self, ref_allele, annotation):
+
+        # TODO: get neo4j seq array back as python array
+        #       and then do the comparison in python.
         locus = ref_allele.split("*")[0]
         feat_order = list(self.gfe.struct_order[locus].keys())
         feat_order.sort()
@@ -403,11 +407,11 @@ class ACT(object):
         """
         seq_rec = SeqRecord(Seq(sequence, IUPAC.unambiguous_dna), id="GFE")
         annotation = self.seqann.annotate(seq_rec, locus)
-        if not hasattr(annotation, 'annotation'):
+        if not hasattr(annotation, 'annotation') or hasattr(annotation, 'gfe'):
             return annotation
         else:
-            features, gfe = self.gfe.get_gfe(annotation, locus)
-            return {'gfe': gfe, 'structure': features, 'annotation': annotation}
+            #features, gfe = self.gfe.get_gfe(annotation, locus)
+            return {'gfe': annotation.gfe, 'structure': annotation.structure, 'annotation': annotation}
 
     def gfe_lookup(self, gfe, features):
         """

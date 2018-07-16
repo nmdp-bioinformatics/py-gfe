@@ -321,6 +321,41 @@ class TestPygfe(unittest.TestCase):
         self.assertIsInstance(typing1, Typing)
         pass
 
+    def test_004_loader3(self):
+        start = time.time()
+        graph = Graph(neo4jurl, user=neo4juser, password=neo4jpass,
+                      bolt=False)
+        #if conn():
+        server = BioSeqDatabase.open_database(driver="pymysql",
+                                              user=biosqluser,
+                                              passwd=biosqlpass,
+                                              host=biosqlhost,
+                                              db=biosqldb, port=3307)
+        seqann = BioSeqAnn(server=server, verbose=True)
+        pygfe = pyGFE(graph=graph,
+                      seqann=seqann,
+                      verbose=False,
+                      load_features=False,
+                      load_gfe2hla=True,
+                      load_seq2hla=True,
+                      load_gfe2feat=True,
+                      loci=["HLA-A"])
+        self.assertIsInstance(pygfe, pyGFE)
+        seqs = list(SeqIO.parse(self.data_dir + "/known_A.fasta", "fasta"))
+        #typing1 = pygfe.type_from_seq("HLA-A", str(seqs[0].seq), "3.20.0")
+        typing2 = pygfe.type_from_seq("HLA-A", str(seqs[0].seq), "3.31.0")
+        server.close()
+        end = time.time()
+        time_taken = end - start
+        print("TIME TAKEN: " + str(time_taken))
+        self.assertEqual(typing2.hla, 'HLA-A*01:01:01:01')
+        self.assertEqual(typing2.status, "documented")
+        self.assertIsInstance(typing2, Typing)
+        # self.assertEqual(typing1.hla, 'HLA-A*01:01:01:01')
+        # self.assertEqual(typing1.status, "documented")
+        # self.assertIsInstance(typing1, Typing)
+        pass
+
     def test_001_load_features(self):
         graph = Graph(neo4jurl, user=neo4juser, password=neo4jpass,
                       bolt=False)
@@ -329,7 +364,8 @@ class TestPygfe(unittest.TestCase):
                                               user=biosqluser,
                                               passwd=biosqlpass,
                                               host=biosqlhost,
-                                              db=biosqldb)
+                                              db=biosqldb,
+                                              port=3307)
         seqann = BioSeqAnn(server=server)
         #else:
         #    seqann = BioSeqAnn()

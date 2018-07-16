@@ -73,6 +73,11 @@ is_classII = lambda x: True if re.search("HLA-D", x) else False
 is_classI = lambda x: True if re.search("HLA-\Dw", x) else False
 lc = lambda x: x.lower() if not re.search("UTR", x) else x.lower().replace("utr", "UTR")
 
+from pygfe.cypher import all_gfe2hla
+from pygfe.cypher import all_seq2hla
+from pygfe.cypher import all_gfe2feats
+from pygfe.cypher import hla_seqdiff
+
 from pandas import DataFrame
 from pygfe.gfe import GFE
 from pygfe.act import ACT
@@ -85,6 +90,8 @@ import logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     datefmt='%m/%d/%Y %I:%M:%S %p',
                     level=logging.INFO)
+
+# EXTEND SeqAnn
 
 
 class pyGFE(ACT, GraphSearch):
@@ -106,6 +113,9 @@ class pyGFE(ACT, GraphSearch):
                  gfe2hla: Dict=None,
                  gfe_feats: DataFrame=None,
                  seq2hla: DataFrame=None,
+                 load_gfe2hla: bool=False,
+                 load_seq2hla: bool=False,
+                 load_gfe2feat: bool=False,
                  verbosity=1):
         '''
         Constructor
@@ -127,4 +137,37 @@ class pyGFE(ACT, GraphSearch):
         self.seq2hla = seq2hla
         self.gfe_feats = gfe_feats
         self.verbose = verbose
+
+        if load_gfe2feat:
+            self.gfe_feats = pa.DataFrame(self.gfedb.graph.data(all_gfe2feats()))
+            self.gfe_feats['DBV'] = self.gfe_feats['DB'].apply(lambda db: "".join(db.split(".")))
+            self.gfe_feats['DB'] = self.gfe_feats['DBV']
+            self.gfe_feats = self.gfe_feats.drop(['DBV'], axis=1)
+
+        if load_seq2hla:
+            self.seq2hla = pa.DataFrame(self.gfedb.graph.data(all_seq2hla()))
+            self.seq2hla['DBV'] = self.seq2hla['DB'].apply(lambda db: "".join(db.split(".")))
+            self.seq2hla['DB'] = self.seq2hla['DBV']
+            self.seq2hla = self.seq2hla.drop(['DBV'], axis=1)
+
+        if load_gfe2hla:
+            tmp_gfe = {}
+            gfehla_df = pa.DataFrame(self.gfedb.graph.data(all_gfe2hla()))
+            for loc in gfehla_df['LOC'].unique().tolist():
+                if re.search("HLA-\D$", loc):
+                    loc_df = gfehla_df.loc[gfehla_df['LOC'] == loc]
+                    loc1 = self.gfe.structures[loc]['exon-2']
+                    loc2 = self.gfe.structures[loc]['exon-3']
+                    loc_df['EXON23'] = loc_df['GFE'].apply(lambda gfe: "-".join([gfe.split("-")[loc1],gfe.split("-")[loc2]]))
+                    loc_df['DBV'] = loc_df['DB'].apply(lambda db: "".join(db.split(".")))
+                    loc_df['DB'] = loc_df['DBV']
+                    loc_df = loc_df.drop(['DBV'], axis=1)
+                    tmp_gfe.update({loc: loc_df})
+
+                if is_classII(loc):
+                    loc_df = gfehla_df.loc[gfehla_df['LOC'] == loc]
+                    loc1 = self.gfe.structures[loc]['exon-2']
+                    loc_df['EXON2'] = loc_df['GFE'].apply(lambda gfe:gfe.split("-")[loc1])
+                    tmp_gfe.update({loc: loc_df})
+            self.gfe2hla = tmp_gfe
 
