@@ -6,7 +6,7 @@ from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
 from pygfe.models.base_model_ import Model
-from pygfe import util
+from seqann import util
 
 
 class Error(Model):

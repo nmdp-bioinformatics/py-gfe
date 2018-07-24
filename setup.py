@@ -23,8 +23,6 @@
 #    > http://www.opensource.org/licenses/lgpl-license.php
 #
 
-
-
 from setuptools import setup
 
 with open('README.rst') as readme_file:
@@ -57,7 +55,7 @@ test_requirements = [
 
 setup(
     name='pygfe',
-    version='0.0.18',
+    version='0.0.21',
     description="Python package for converting sequence annotations to gene feature enumerations (GFE).",
     long_description=readme + '\n\n' + history,
     author="Mike Halagan",
@@ -72,7 +70,6 @@ setup(
     ],
     package_dir={'pygfe':
                  'pygfe'},
-    package_data={'pygfe': ['data/*.structure']},
     install_requires=requirements,
     license="LGPL 3.0",
     zip_safe=False,

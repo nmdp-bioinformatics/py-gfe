@@ -3,7 +3,7 @@ import pprint
 import six
 import typing
 
-from pygfe import util
+from seqann import util
 
 T = typing.TypeVar('T')
 
