@@ -8,7 +8,7 @@ from typing import List, Dict  # noqa: F401
 from pygfe.models.base_model_ import Model
 from pygfe.models.feature import Feature  # noqa: F401,E501
 from pygfe.models.seqdiff import Seqdiff  # noqa: F401,E501
-from pygfe import util
+from seqann import util
 
 
 class Typing(Model):

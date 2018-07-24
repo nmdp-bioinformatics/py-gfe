@@ -40,10 +40,10 @@ from pygfe.pygfe import pyGFE
 import os
 
 from Bio import SeqIO
-from pygfe.act import ACT
+#from pygfe.act import ACT
 from py2neo import Graph
-from pygfe.gfedb import GfeDB
-from pygfe.gfe import GFE
+#from pygfe.gfedb import GfeDB
+#from pygfe.gfe import GFE
 from pygfe.models.error import Error
 #from pygfe.models.feature import Feature
 from pygfe.models.typing import Typing
@@ -130,6 +130,7 @@ class TestPygfe(unittest.TestCase):
                                               host=biosqlhost,
                                               db=biosqldb)
         seqann = BioSeqAnn(server=server, verbose=False)
+        seqann = "X"
         #else:
         #    print
         #    seqann = BioSeqAnn()
@@ -142,6 +143,51 @@ class TestPygfe(unittest.TestCase):
         self.assertIsInstance(pygfe, pyGFE)
         seqs = list(SeqIO.parse(self.data_dir + "/unknown_A.fasta", "fasta"))
         typing = pygfe.type_from_seq("HLA-A", str(seqs[1].seq))
+        #self.assertEqual(typing.gfe, 'HLA-Aw770-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-4')
+        self.assertEqual(typing.hla, 'HLA-A*01:01:01:01')
+        self.assertEqual(typing.status, "novel")
+        self.assertIsInstance(typing, Typing)
+        pass
+
+    def test_001_pygfe(self):
+        graph = Graph(neo4jurl, user=neo4juser, password=neo4jpass,
+                      bolt=False)
+        #if conn():
+
+        pickle_file1 = "unique_db-feats.pickle"
+        pickle_file2 = "feature-service.pickle"
+        pickle_gfe2feat = "gfe2feat.pickle"
+        pickle_file3 = "gfe2hla.pickle"
+        pickle_file4 = "seq2hla.pickle"
+
+        with open(pickle_gfe2feat, 'rb') as handle1:
+            gfe_feats = pickle.load(handle1)
+
+        with open(pickle_file1, 'rb') as handle1:
+            feats = pickle.load(handle1)
+
+        with open(pickle_file2, 'rb') as handle2:
+            cached_feats = pickle.load(handle2)
+
+        with open(pickle_file3, 'rb') as handle3:
+            gfe2hla = pickle.load(handle3)
+
+        with open(pickle_file4, 'rb') as handle:
+            seq2hla = pickle.load(handle)
+
+        seqann = BioSeqAnn(verbose=False, cached_features=cached_feats, align=True)
+
+        pygfe = pyGFE(graph=graph,
+                      seqann=seqann,
+                      gfe_feats=gfe_feats,
+                      gfe2hla=gfe2hla,
+                      seq2hla=seq2hla,
+                      features=feats,
+                      verbose=False)
+        self.assertIsInstance(pygfe, pyGFE)
+        seqs = list(SeqIO.parse(self.data_dir + "/unknown_A.fasta", "fasta"))
+        typing = pygfe.type_from_seq("HLA-A", str(seqs[1].seq))
+        print(typing)
         #self.assertEqual(typing.gfe, 'HLA-Aw770-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-4')
         self.assertEqual(typing.hla, 'HLA-A*01:01:01:01')
         self.assertEqual(typing.status, "novel")

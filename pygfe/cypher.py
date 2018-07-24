@@ -190,8 +190,8 @@ def similar_gfe_classII(gfe: str, exon2: int, db: str) -> str:
 def similar_gfe_classI(gfe: str, exon2: int, exon3: int, db: str) -> str:
 
     [locus, feature_accessions] = gfe.split("w")
-    typing_query = "MATCH (hla:IMGT_HLA)-[r:HAS_GFE]-(gfe1:GFE)-[f1:HAS_FEATURE]-(feat1:FEATURE)," \
-            + " (hla:IMGT_HLA)-[r2:HAS_GFE]-(gfe1:GFE)-[f2:HAS_FEATURE]-(feat2:FEATURE)" \
+    typing_query = "MATCH (hla:IMGT_HLA)-[r:HAS_GFE]-(gfe1:GFE)-[f1:HAS_FEATURE]-(feat1:FEATURE)" \
+            + " MATCH (hla:IMGT_HLA)-[r2:HAS_GFE]-(gfe1:GFE)-[f2:HAS_FEATURE]-(feat2:FEATURE)" \
             + " WHERE gfe1.locus = \"" + locus + "\"" \
             + " AND f1.accession = \"" + exon2 + "\"" \
             + " AND f2.accession = \"" + exon3 + "\"" \
