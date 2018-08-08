@@ -194,6 +194,51 @@ class TestPygfe(unittest.TestCase):
         self.assertIsInstance(typing, Typing)
         pass
 
+    def test_002_pygfe(self):
+        graph = Graph(neo4jurl, user=neo4juser, password=neo4jpass,
+                      bolt=False)
+        #if conn():
+
+        pickle_file1 = "unique_db-feats.pickle"
+        pickle_file2 = "feature-service.pickle"
+        pickle_gfe2feat = "gfe2feat.pickle"
+        #pickle_file3 = "gfe2hla.pickle"
+        pickle_file4 = "seq2hla.pickle"
+
+        with open(pickle_gfe2feat, 'rb') as handle1:
+            gfe_feats = pickle.load(handle1)
+
+        with open(pickle_file1, 'rb') as handle1:
+            feats = pickle.load(handle1)
+
+        with open(pickle_file2, 'rb') as handle2:
+            cached_feats = pickle.load(handle2)
+
+        # with open(pickle_file3, 'rb') as handle3:
+        #     gfe2hla = pickle.load(handle3)
+
+        with open(pickle_file4, 'rb') as handle:
+            seq2hla = pickle.load(handle)
+
+        seqann = BioSeqAnn(verbose=False, cached_features=cached_feats, align=True)
+
+        pygfe = pyGFE(graph=graph,
+                      seqann=seqann,
+                      gfe_feats=gfe_feats,
+                      seq2hla=seq2hla,
+                      features=feats,
+                      verbose=False)
+        self.assertIsInstance(pygfe, pyGFE)
+        seqs = list(SeqIO.parse(self.data_dir + "/unknown_A.fasta", "fasta"))
+        typing = pygfe.type_from_seq("HLA-A", str(seqs[1].seq))
+        print(typing)
+        #self.assertEqual(typing.gfe, 'HLA-Aw770-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-4')
+        self.assertEqual(typing.hla, 'HLA-A*01:01:01:01')
+        self.assertEqual(typing.status, "novel")
+        self.assertIsInstance(typing, Typing)
+        pass
+
+
     def test_005_picklefiles(self):
         graph = Graph("http://ec2-34-207-175-160.compute-1.amazonaws.com:80", user=neo4juser, password=neo4jpass,
                       bolt=False)

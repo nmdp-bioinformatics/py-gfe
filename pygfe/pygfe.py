@@ -24,7 +24,6 @@ import seqann
 from seqann.blast_cmd import get_locus
 from seqann.util import checkseq
 from seqann.util import isutr
-from seqann.util import is_classI
 from seqann.util import is_classII
 from seqann.util import is_kir
 from seqann import BioSeqAnn
@@ -49,6 +48,7 @@ import logging
 flatten = lambda l: [item for sublist in l for item in sublist]
 is_gfe = lambda x: True if re.search("\d+-\d+-\d+", x) else False
 lc = lambda x: x.lower() if not re.search("UTR", x) else x.lower().replace("utr", "UTR")
+is_classI = lambda x: True if re.search("HLA-\Dw", x) else False
 
 # Dict of seqann objects
 
@@ -75,6 +75,7 @@ class pyGFE(object):
                  seqann: Any={},
                  features: Dict=None,
                  verbose: bool=False,
+                 kir: bool=False,
                  pid: str="NA",
                  gfe2hla: Dict=None,
                  gfe_feats: DataFrame=None,
@@ -87,6 +88,7 @@ class pyGFE(object):
         Constructor
         '''
         # TODO: Add catch if seqann or graph aren't defined
+        self.kir = kir
         self.graph = graph
         self.logger = logging.getLogger("Logger." + __name__)
         if pid:
@@ -117,20 +119,20 @@ class pyGFE(object):
         # ISSUE: gfe_feats & seq2hla need to be loaded together
         #
         if load_gfe2feat:
-            self.gfe_feats = pa.DataFrame(self.graph.data(all_gfe2feats()))
+            self.gfe_feats = self.graph.run(all_gfe2feats()).to_data_frame()
             self.gfe_feats['DBV'] = self.gfe_feats['DB'].apply(lambda db: "".join(db.split(".")))
             self.gfe_feats['DB'] = self.gfe_feats['DBV']
             self.gfe_feats = self.gfe_feats.drop(['DBV'], axis=1)
 
         if load_seq2hla:
-            self.seq2hla = pa.DataFrame(self.graph.data(all_seq2hla()))
+            self.seq2hla = self.graph.run(all_seq2hla()).to_data_frame()
             self.seq2hla['DBV'] = self.seq2hla['DB'].apply(lambda db: "".join(db.split(".")))
             self.seq2hla['DB'] = self.seq2hla['DBV']
             self.seq2hla = self.seq2hla.drop(['DBV'], axis=1)
 
         if load_gfe2hla:
             tmp_gfe = {}
-            gfehla_df = pa.DataFrame(self.graph.data(all_gfe2hla()))
+            gfehla_df = self.graph.run(all_gfe2hla()).to_data_frame()
             for loc in gfehla_df['LOC'].unique().tolist():
                 if re.search("HLA-\D$", loc):
                     loc_df = gfehla_df.loc[gfehla_df['LOC'] == loc]
@@ -172,7 +174,7 @@ class pyGFE(object):
                                         feat.rank,
                                         feat.sequence)
 
-                seq_features = pa.DataFrame(self.graph.data(feat_q))
+                seq_features = self.graph.run(feat_q).to_data_frame()
                 if seq_features.empty:
                     unique.append(feat)
         return unique
@@ -237,7 +239,7 @@ class pyGFE(object):
             # Guessing locus with blastn
             locus = get_locus(sequence,
                               kir=self.kir,
-                              refdata=self.self.seqann[ac_object.imgtdb_version].refdata)
+                              refdata=self.seqann[ac_object.imgtdb_version].refdata)
 
             if locus and self.verbose:
                 self.logger.info(self.logname + " Locus prediction = " + locus)
@@ -342,7 +344,7 @@ class pyGFE(object):
                                           term=lc(feat['term']))
                         features.append(feature)
                 else:
-                    seq_features = pa.DataFrame(self.graph.data(get_features(gfe)))
+                    seq_features = self.graph.run(get_features(gfe)).to_data_frame()
                     for i in range(0, len(seq_features['term'])):
                         feature = Feature(accession=seq_features['accession'][i],
                                           rank=seq_features['rank'][i],
@@ -352,12 +354,12 @@ class pyGFE(object):
                 return [hla, gfe, features]
         else:
             lookup_query = sequence_search(locus, sequence)
-            sequence_data = pa.DataFrame(self.graph.data(lookup_query))
+            sequence_data = self.graph.run(lookup_query).to_data_frame()
             if not sequence_data.empty:
                 features = list()
                 gfe = list(set([x for x in sequence_data["GFE"]]))
                 hla = list(set([x for x in sequence_data["HLA"]]))
-                seq_features = pa.DataFrame(self.graph.data(get_features(gfe[0])))
+                seq_features = self.graph.run(get_features(gfe[0])).to_data_frame()
                 for i in range(0, len(seq_features['term'])):
                     feature = Feature(accession=seq_features['accession'][i],
                                       rank=seq_features['rank'][i],
@@ -405,7 +407,7 @@ class pyGFE(object):
                 cypher = similar_gfe_classI(gfe, gfe_dict["EXON-2"],
                                             gfe_dict["EXON-3"],
                                             imgtdb_version)
-                similar_data = pa.DataFrame(self.graph.data(cypher))
+                similar_data = self.graph.run(cypher).to_data_frame()
                 return self.create_typing(similar_data, gfe, features)
         elif is_classII(gfe):
             gfe_dict = self.breakup_gfe(gfe)
@@ -418,7 +420,7 @@ class pyGFE(object):
             else:
                 cypher = similar_gfe_classII(gfe, gfe_dict["EXON-2"],
                                              imgtdb_version)
-                similar_data = pa.DataFrame(self.graph.data(cypher))
+                similar_data = self.graph.run(cypher).to_data_frame()
                 return self.create_typing(similar_data, gfe, features)
         elif is_kir(gfe):
             return self.find_gfe_kir(gfe, features)
@@ -435,30 +437,29 @@ class pyGFE(object):
         # TODO: get neo4j seq array back as python array
         #       and then do the comparison in python.
         locus = ref_allele.split("*")[0]
-        feat_order = list(self.seqann[imgtdb_version].refdata.struct_order[locus].keys())
+        dbv = "".join(imgtdb_version.split("."))
+        feat_order = list(self.seqann[dbv].refdata.struct_order[locus].keys())
         feat_order.sort()
-        db = imgtdb_version
-        dbv = ".".join([list(db)[0], "".join(list(db)[1:3]), list(db)[3]])
-        aligned_seq = list("".join([annotation.aligned[self.rename_feat(self.seqann[imgtdb_version].refdata.struct_order[locus][i])] for i in feat_order]))
+        aligned_seq = list("".join([annotation.aligned[self.rename_feat(self.seqann[dbv].refdata.struct_order[locus][i])] for i in feat_order]))
         seq_l = ",".join(["".join(["\"", s, "\""]) for s in aligned_seq])
         query = "MATCH (a:IMGT_HLA)-[r:HAS_ALIGNMENT]-(n:GEN_ALIGN) " \
                 + "WHERE a.locus = \"" + locus + "\" " \
                 + "AND a.name = \"" + ref_allele + "\" " \
-                + "AND r.imgt_release = \"" + dbv + "\" " \
+                + "AND r.imgt_release = \"" + imgtdb_version + "\" " \
                 + "WITH [" + seq_l + "] AS RSEQ,n " \
                 + "WITH [x in range(0,size(n.seq)-1) | x] AS ind,RSEQ,n " \
                 + "UNWIND ind AS number " \
                 + "WITH DISTINCT number,RSEQ,n " \
                 + "WHERE NOT(n.seq[number] = RSEQ[number]) "\
                 + "RETURN number, n.seq[number] AS REF, RSEQ[number] AS SEQ"
-        diff_data = pa.DataFrame(self.graph.data(query))
+        diff_data = self.graph.run(query).to_data_frame()
         diffs = []
         for i in range(0, len(diff_data)):
             index = diff_data['number'][i]
-            diff_feat = self.seqann[imgtdb_version].refdata.align_coordinates[locus.split("-")[1]][index]
+            diff_feat = self.seqann[dbv].refdata.align_coordinates[locus.split("-")[1]][index]
             ref_seq = diff_data['REF'][i]
             in_seq = diff_data['SEQ'][i]
-            relative_location = index + self.seqann[imgtdb_version].refdata.location[locus]
+            relative_location = index + self.seqann[dbv].refdata.location[locus]
             # TODO: Change rank!
             diff = Seqdiff(term=diff_feat, location=str(relative_location), ref=ref_seq, inseq=in_seq)
             diffs.append(diff)
@@ -510,7 +511,7 @@ class pyGFE(object):
         """
         [locus, feature_accessions] = gfe.split("w")
         cypher = similar_kir(locus)
-        similar_data = pa.DataFrame(self.graph.data(cypher))
+        similar_data = self.graph.run(cypher).to_data_frame()
         return self.create_typing(similar_data, gfe, features)
 
     def map_structures(self, gfe_structs):
