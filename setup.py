@@ -32,16 +32,38 @@ with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
 requirements = [
-    'bson',
-    'certifi',
-    'pytz',
-    'six',
-    'urllib3',
-    'pandas',
+    'atomicwrites==1.1.5',
+    'attrs==18.1.0',
+    'biopython==1.70',
+    'bson==0.5.5',
+    'certifi==2017.11.5',
+    'chardet==3.0.4',
+    'click==6.7',
+    'colorama==0.3.9',
+    'idna==2.6',
+    'more-itertools==4.2.0',
+    'neo4j-driver==1.6.1',
+    'neotime==1.0.0',
+    'numpy==1.13.3',
+    'pandas==0.22.0',
+    'pkginfo==1.4.1',
+    'pluggy==0.6.0',
+    'prompt-toolkit==1.0.15',
+    'py==1.5.4',
+    'py2neo==4.0.0',
+    'Pygments==2.2.0',
+    'PyMySQL==0.7.11',
+    'pytest==3.6.3',
+    'python-dateutil==2.6.1',
+    'pytz==2017.3',
+    'requests==2.18.4',
+    'requests-toolbelt==0.8.0',
     'seqann',
-    'biopython',
-    'PyMySQL',
-    'py2neo'
+    'six==1.11.0',
+    'tqdm==4.19.4',
+    'twine==1.9.1',
+    'urllib3==1.22',
+    'wcwidth==0.1.7'
 ]
 
 test_requirements = [
@@ -55,7 +77,7 @@ test_requirements = [
 
 setup(
     name='pygfe',
-    version='0.0.21',
+    version='0.0.25',
     description="Python package for converting sequence annotations to gene feature enumerations (GFE).",
     long_description=readme + '\n\n' + history,
     author="Mike Halagan",

@@ -27,4 +27,4 @@ from .pygfe import pyGFE
 
 __author__ = """Mike Halagan"""
 __email__ = 'mhalagan@nmdp.org'
-__version__ = '0.0.21'
+__version__ = '0.0.25'
