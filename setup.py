@@ -56,13 +56,13 @@ requirements = [
     'pytest==3.6.3',
     'python-dateutil==2.6.1',
     'pytz==2017.3',
-    'requests==2.18.4',
+    'requests',
     'requests-toolbelt==0.8.0',
     'seqann',
     'six==1.11.0',
     'tqdm==4.19.4',
     'twine==1.9.1',
-    'urllib3==1.22',
+    'urllib3',
     'wcwidth==0.1.7'
 ]
 
