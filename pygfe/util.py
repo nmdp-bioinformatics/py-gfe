@@ -1,4 +1,7 @@
-from typing import GenericMeta
+try:
+    from typing import GenericMeta
+except ImportError:
+    class GenericMeta(type): pass
 from datetime import datetime, date
 from six import integer_types, iteritems
 
