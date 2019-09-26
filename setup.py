@@ -34,7 +34,7 @@ with open('HISTORY.rst') as history_file:
 requirements = [
     'atomicwrites==1.1.5',
     'attrs==18.1.0',
-    'biopython==1.70',
+    'biopython==1.74',
     'bson==0.5.5',
     'certifi==2017.11.5',
     'chardet==3.0.4',
