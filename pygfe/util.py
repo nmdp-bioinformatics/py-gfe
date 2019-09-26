@@ -1,7 +1,7 @@
 try:
-    from typing import GenericMeta  # python 3.6
+    from typing import Generic as GenericMeta
 except ImportError:
-    # in 3.7, genericmeta doesn't exist but we don't need it
+    # in 3.7, genericmeta doesn't exist as GenericMeta.  Casting Generic as Generic
     class GenericMeta(type): pass
 from datetime import datetime, date
 from six import integer_types, iteritems
