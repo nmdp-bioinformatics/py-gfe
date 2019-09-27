@@ -26,14 +26,15 @@ Python Boilerplate contains all the boilerplate you need to create a Python pack
 
 Docker
 --------
-* docker pull nmdpbioinformatics/pygfe
+
+.. code-block:: shell
+
+  docker pull nmdpbioinformatics/pygfe
 
 .. code-block:: 
 
 	docker run -it --rm -v $PWD:/opt nmdpbioinformatics/pygfe seq2gfe \
 		-f /opt/your_fastafile.fasta -l HLA-A
-
-
 
 
 Example
