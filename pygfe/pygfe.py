@@ -215,7 +215,7 @@ class pyGFE(object):
         if not ac_object.imgtdb_version in self.seqann:
             self.seqann.update({ac_object.imgtdb_version:
                                 BioSeqAnn(dbversion=ac_object.imgtdb_version,
-                                          store_features=self.store_features,
+                                          #store_features=self.store_features,
                                           load_features=self.load_features,
                                           cached_features=self.cached_features)})
 

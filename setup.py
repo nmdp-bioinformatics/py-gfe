@@ -32,57 +32,25 @@ with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
 requirements = [
-    'atomicwrites==1.1.5',
-    'attrs==18.1.0',
-    'biopython==1.74',
-    'bson==0.5.5',
-    'certifi==2017.11.5',
-    'chardet==3.0.4',
-    'click==6.7',
-    'colorama==0.3.9',
-    'idna==2.6',
-    'more-itertools==4.2.0',
-    'neo4j-driver==1.6.1',
-    'neotime==1.0.0',
-    'numpy==1.17.2',
-    'pandas==0.25.1',
-    'pkginfo==1.4.1',
-    'pluggy==0.6.0',
-    'prompt-toolkit==1.0.15',
-    'py==1.5.4',
-    'py2neo==4.0.0',
-    'Pygments==2.2.0',
-    'PyMySQL==0.7.11',
-    'pytest==3.6.3',
-    'python-dateutil==2.6.1',
-    'pytz==2017.3',
-    'requests==2.18.4',
-    'requests-toolbelt==0.8.0',
-    'seqann',
-    'six==1.11.0',
-    'tqdm==4.19.4',
-    'twine==1.9.1',
-    'urllib3==1.22',
-    'wcwidth==0.1.7'
+    'seq-ann==1.0.5',
+    'more-itertools==7.2.0',
+    'neo4j-driver==1.7.4',
+    'py2neo==4.3.0',
+    'PyMySQL==0.9.3'
 ]
 
 test_requirements = [
     # TODO: put package test requirements here
-    'bson',
-    'certifi',
-    'pytz',
-    'six',
-    'urllib3'
 ]
 
 setup(
     name='pygfe',
-    version='0.0.25',
+    version='0.0.26',
     description="Python package for converting sequence annotations to gene feature enumerations (GFE).",
     long_description=readme + '\n\n' + history,
-    author="Mike Halagan",
-    author_email='mhalagan@nmdp.org',
-    url='https://github.com/mhalagan-nmdp/pygfe',
+    author="CIBMTR",
+    author_email='cibmtr-pypi@nmdp.org',
+    url='https://github.com/mhalagan-nmdp/py-gfe',
     packages=[
         'pygfe',
         'pygfe.models',
