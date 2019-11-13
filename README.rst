@@ -29,11 +29,11 @@ Docker
 
 .. code-block:: shell
 
-  docker pull nmdpbioinformatics/pygfe
+  docker pull nmdpbioinformatics/py-gfe
 
 .. code-block:: 
 
-	docker run -it --rm -v $PWD:/opt nmdpbioinformatics/pygfe seq2gfe \
+	docker run -it --rm -v $PWD:/opt nmdpbioinformatics/py-gfe seq2gfe \
 		-f /opt/your_fastafile.fasta -l HLA-A
 
 

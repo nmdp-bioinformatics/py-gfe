@@ -103,3 +103,5 @@ misc/
 
 # mypy
 .mypy_cache/
+
+tags

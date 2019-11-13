@@ -32,10 +32,11 @@ with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
 requirements = [
-    'seq-ann==1.0.5',
+    'seq-ann==1.1.0',
     'more-itertools==7.2.0',
     'neo4j-driver==1.7.4',
     'py2neo==4.3.0',
+    'pandas==0.25.1',
     'PyMySQL==0.9.3'
 ]
 
@@ -44,13 +45,13 @@ test_requirements = [
 ]
 
 setup(
-    name='pygfe',
-    version='0.0.26',
+    name='py-gfe',
+    version='1.1.0',
     description="Python package for converting sequence annotations to gene feature enumerations (GFE).",
     long_description=readme + '\n\n' + history,
     author="CIBMTR",
     author_email='cibmtr-pypi@nmdp.org',
-    url='https://github.com/mhalagan-nmdp/py-gfe',
+    url='https://github.com/nmdp-bioinformatics/py-gfe',
     packages=[
         'pygfe',
         'pygfe.models',
@@ -69,13 +70,7 @@ setup(
         'Intended Audience :: Developers',
         'License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)',
         'Natural Language :: English',
-        "Programming Language :: Python :: 2",
-        'Programming Language :: Python :: 2.6',
-        'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.3',
-        'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.7',
     ],
     scripts=['scripts/seq2gfe'],
     test_suite='tests',

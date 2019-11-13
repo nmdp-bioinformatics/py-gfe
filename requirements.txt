@@ -1,6 +1,6 @@
-seq-ann==1.0.5
+seq-ann==1.1.0
 more-itertools==7.2.0
 neo4j-driver==1.7.4
 py2neo==4.3.0
+pandas==0.25.1
 PyMySQL==0.9.3
-pandas==0.24.2
