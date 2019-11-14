@@ -1,18 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import pymysql
+import argparse
+
 from Bio import SeqIO
 from BioSQL import BioSeqDatabase
 from BioSQL.BioSeq import DBSeq
-
-from seqann.sequence_annotation import BioSeqAnn
+from seqann import BioSeqAnn, gfe
 from seqann.blast_cmd import get_locus
-from pygfe.pygfe import pyGFE
-import time
-import datetime
-import argparse
-import sys
 
 
 def main():
@@ -67,30 +62,35 @@ def main():
 
     seqann = BioSeqAnn(verbose=verbose, server=server, kir=kir)
 
-    gfe_maker = pyGFE()
+    gfe_maker = gfe.GFE()
     for seq in SeqIO.parse(fastafile, "fasta"):
         if not loc:
             loc = get_locus(seq, kir=kir, verbose=verbose,
                             refdata=seqann.refdata)
-        ann = seqann.annotate(seq, loc)
-        features, gfe = gfe_maker.get_gfe(ann, loc)
+
+        try:
+            ann = seqann.annotate(seq, loc)
+        except ValueError as e:
+            print("Skipping sequence: " + loc + " reason:", e)
+            break
+
+        features, gfe_name = gfe_maker.get_gfe(ann, loc)
         print('{:*^20} {:^20} {:*^20}'.format("", str(seq.description), ""))
         l = 0
         for f in ann.annotation:
             if isinstance(ann.annotation[f], DBSeq):
-                print(gfe, f, ann.method, str(ann.annotation[f]), sep="\t")
+                print(gfe_name, f, ann.method, str(ann.annotation[f]), sep="\t")
                 l += len(ann.annotation[f])
             else:
-                print(gfe, f, ann.method, str(ann.annotation[f].seq), sep="\t")
+                print(gfe_name, f, ann.method, str(ann.annotation[f].seq), sep="\t")
                 l += len(ann.annotation[f].seq)
         print("")
 
     if serv:
         server.close()
 
+
 if __name__ == '__main__':
     """The following will be run if file is executed directly,
     but not if imported as a module"""
     main()
-
-

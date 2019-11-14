@@ -7,8 +7,8 @@ RUN apt-get update -q \
     && apt-get autoremove \
     && apt-get clean
 
-RUN pip install seq-ann==1.0.5 \
-    && pip install pygfe
+RUN pip install --no-cache-dir seq-ann==1.1.0
+RUN pip install --no-cache-dir py-gfe==1.1.0
 
 RUN touch blank.fasta \
     && seq2gfe -f blank.fasta -l HLA-A \
