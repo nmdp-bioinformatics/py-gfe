@@ -5,7 +5,7 @@ Created on Feb 8, 2017
 '''
 
 import pygfe
-from pygfe.cypher import sequence_search
+from pygfe.cypher import sequence_search, all_db_imgt
 from pygfe.cypher import similar_gfe_classI
 from pygfe.cypher import similar_gfe_classII
 from pygfe.cypher import similar_kir
@@ -614,6 +614,11 @@ class pyGFE(object):
                 count += 1
 
         return count
+
+    def list_all_db_releases(self):
+        cypher = all_db_imgt()
+        response_data = self.graph.run(cypher).to_data_frame()
+        return list(response_data.HLA_DB)
 
 
 class SeqAnnException(Exception):

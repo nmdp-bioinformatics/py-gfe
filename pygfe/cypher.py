@@ -308,3 +308,8 @@ def persisted_query() -> str:
     q4 = "RETURN hla.name AS HLA,gfe.name AS GFE,feat.name AS TERM,feat.rank AS RANK,f.accession AS ACCESSION,feat.sequence AS SEQUENCE"
     return query + q2 + q3 + q4
 
+
+def all_db_imgt():
+    query = " MATCH(n: IMGT_HLA)-[e: HAS_FEATURE]-(feat:FEATURE)" \
+            + "RETURN DISTINCT e.imgt_release  AS HLA_DB ORDER BY e.imgt_release DESC"
+    return query
