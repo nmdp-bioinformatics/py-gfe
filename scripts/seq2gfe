@@ -8,6 +8,7 @@ from BioSQL import BioSeqDatabase
 from BioSQL.BioSeq import DBSeq
 from seqann import BioSeqAnn, gfe
 from seqann.blast_cmd import get_locus
+import time
 
 
 def main():
@@ -76,9 +77,14 @@ def main():
         if id_spacer in line:
             spacer1, id, spacer2 = line.split(' ')
             ids.append(id)
+    num_existing_ids = len(ids)
+    if num_existing_ids:
+        print(num_existing_ids, "rows in existing output")
 
     gfe_maker = gfe.GFE()
-    for i, seq in enumerate(SeqIO.parse(fastafile, "fasta")):
+    start_time_rel = start_time_abs = time.time()
+    n = 0
+    for seq in SeqIO.parse(fastafile, "fasta"):
         try:
             if seq._seq and seq.description not in ids:
                 if not loc:
@@ -95,12 +101,20 @@ def main():
                 f_out.write('{} {:^20} {}\n'.format(id_spacer, str(seq.description), id_spacer))
                 l = 0
                 for f in ann.annotation:
-                    seq = ann.annotation[f] if isinstance(ann.annotation[f], DBSeq) else ann.annotation[f].seq
-                    f_out.write('\t'.join([gfe_name, f, ann.method, str(seq)]) + '\n')
-                    l += len(seq)
+                    f_seq = ann.annotation[f] if isinstance(ann.annotation[f], DBSeq) else ann.annotation[f].seq
+                    f_out.write('\t'.join([gfe_name, f, ann.method, str(f_seq)]) + '\n')
+                    l += len(f_seq)
                 f_out.write('\n')
+                if n and n > num_existing_ids and n % 1 == 0:
+                    print('%s rows loaded after %.2f seconds (with a length of %s)' %
+                            (n - num_existing_ids, time.time() - start_time_rel,
+                            len(seq)))
+                    start_time_rel = time.time()
+                n += 1
         except Exception as e:
             print("Error with %s at index %s: %s" % (seq.description, i, e))
+    
+    print(i, "total rows loaded")
 
     if serv:
         server.close()
