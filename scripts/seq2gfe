@@ -112,7 +112,7 @@ def main():
                     start_time_rel = time.time()
                 n += 1
         except Exception as e:
-            print("Error with %s at index %s: %s" % (seq.description, i, e))
+            print("Error with %s at index %s: %s" % (seq.description, n, e))
     
     print(i, "total rows loaded")
 
