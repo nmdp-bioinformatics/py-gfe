@@ -26,6 +26,11 @@ def main():
                         help="HLA locus",
                         type=str)
 
+    parser.add_argument("-o", "--output",
+                        required=True,
+                        help="Output file where GFE will be stored",
+                        type=str)    
+
     parser.add_argument("-k", "--kir",
                         required=False,
                         help="Bool for KIR",
@@ -45,6 +50,7 @@ def main():
     fastafile = args.file
     loc = args.locus
     serv = args.server
+    output_filename = args.output
 
     verbose = False
     if args.verbose:
@@ -62,10 +68,19 @@ def main():
 
     seqann = BioSeqAnn(verbose=verbose, server=server, kir=kir)
 
+    id_spacer = '{:*^20}'.format("")
+    f_out = open(output_filename, 'a+')
+    f_out.seek(0)
+    ids = []
+    for line in f_out:
+        if id_spacer in line:
+            spacer1, id, spacer2 = line.split(' ')
+            ids.append(id)
+
     gfe_maker = gfe.GFE()
     for i, seq in enumerate(SeqIO.parse(fastafile, "fasta")):
         try:
-            if seq._seq:
+            if seq._seq and seq.description not in ids:
                 if not loc:
                     loc = get_locus(seq, kir=kir, verbose=verbose,
                                     refdata=seqann.refdata)
@@ -77,16 +92,16 @@ def main():
                     break
 
                 features, gfe_name = gfe_maker.get_gfe(ann, loc)
-                print('{:*^20} {:^20} {:*^20}'.format("", str(seq.description), ""))
+                f_out.write('{} {:^20} {}\n'.format(id_spacer, str(seq.description), id_spacer))
                 l = 0
                 for f in ann.annotation:
                     if isinstance(ann.annotation[f], DBSeq):
-                        print(gfe_name, f, ann.method, str(ann.annotation[f]), sep="\t")
+                        f_out.write('\t'.join([gfe_name, f, ann.method, str(ann.annotation[f])]) + '\n')
                         l += len(ann.annotation[f])
                     else:
-                        print(gfe_name, f, ann.method, str(ann.annotation[f].seq), sep="\t")
+                        f_out.write('\t'.join([gfe_name, f, ann.method, str(ann.annotation[f].seq)]) + '\n')
                         l += len(ann.annotation[f].seq)
-                print("")
+                f_out.write('\n')
         except Exception as e:
             print("Error with %s at index %s: %s" % (seq.description, i, e))
 
