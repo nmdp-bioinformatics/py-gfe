@@ -95,12 +95,9 @@ def main():
                 f_out.write('{} {:^20} {}\n'.format(id_spacer, str(seq.description), id_spacer))
                 l = 0
                 for f in ann.annotation:
-                    if isinstance(ann.annotation[f], DBSeq):
-                        f_out.write('\t'.join([gfe_name, f, ann.method, str(ann.annotation[f])]) + '\n')
-                        l += len(ann.annotation[f])
-                    else:
-                        f_out.write('\t'.join([gfe_name, f, ann.method, str(ann.annotation[f].seq)]) + '\n')
-                        l += len(ann.annotation[f].seq)
+                    seq = ann.annotation[f] if isinstance(ann.annotation[f], DBSeq) else ann.annotation[f].seq
+                    f_out.write('\t'.join([gfe_name, f, ann.method, str(seq)]) + '\n')
+                    l += len(seq)
                 f_out.write('\n')
         except Exception as e:
             print("Error with %s at index %s: %s" % (seq.description, i, e))
