@@ -56,9 +56,16 @@ def main():
 
     server = None
     if serv:
-        server = BioSeqDatabase.open_database(driver="pymysql", user="root",
-                                              passwd="", host="localhost",
-                                              db="bioseqdb")
+        import os
+        biosqldb_host = os.getenv('BIOSQLPORT', 'localhost')
+        biosqldb_port = os.getenv('BIOSQLPORT', '3306')
+        biosqldb_user = os.getenv('BIOSQLUSER', 'root')
+        biosqldb_pass = os.getenv('BIOSQLPASSWORD', '')
+
+        server = BioSeqDatabase.open_database(driver="pymysql",
+                                            user=biosqldb_user, passwd=biosqldb_pass,
+                                            host=biosqldb_host, port=biosqldb_port
+                                            db="bioseqdb")
 
     seqann = BioSeqAnn(verbose=verbose, server=server, kir=kir)
 

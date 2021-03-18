@@ -14,3 +14,5 @@ RUN touch blank.fasta \
     && seq2gfe -f blank.fasta -l HLA-A \
 	  && seq2gfe -f blank.fasta -l KIR3DL2 -k
 
+ENV BIOSQLHOST=imgt_biosqldb 
+ENV BIOSQLPORT=3306
