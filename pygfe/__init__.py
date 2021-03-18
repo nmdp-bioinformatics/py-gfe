@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 #
-#    seqann SeqAnn.
+#    seq-ann SeqAnn.
 #    Copyright (c) 2017 Be The Match operated by National Marrow Donor Program. All Rights Reserved.
 #
 #    This library is free software; you can redistribute it and/or modify it
@@ -25,6 +25,5 @@ from __future__ import absolute_import
 from .pygfe import pyGFE
 
 
-__author__ = """Mike Halagan"""
-__email__ = 'mhalagan@nmdp.org'
-__version__ = '0.0.25'
+__author__ = """NMDP Bioinformatics"""
+__version__ = '1.1.0'
