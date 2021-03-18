@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import pandas as pd
 
 from Bio import SeqIO
 from BioSQL import BioSeqDatabase
@@ -84,20 +85,25 @@ def main():
     gfe_maker = gfe.GFE()
     start_time_rel = start_time_abs = time.time()
     n = 0
+    num_no_hit = 0
     for seq in SeqIO.parse(fastafile, "fasta"):
         try:
             if seq._seq and seq.description not in ids:
                 if not loc:
                     loc = get_locus(seq, kir=kir, verbose=verbose,
                                     refdata=seqann.refdata)
-
+                id, project, method, source, allele_index, allele_name = seq.description.split('|')
                 try:
-                    ann = seqann.annotate(seq, loc)
+                    ann = seqann.annotate(seq, loc, allele=allele_name)
                 except ValueError as e:
                     print("Skipping sequence: " + loc + " reason:", e)
                     break
+                if not ann:
+                    num_no_hit = num_no_hit + 1
+                    continue
 
-                features, gfe_name = gfe_maker.get_gfe(ann, loc)
+                # features, gfe_name = gfe_maker.get_gfe(ann, loc)
+                gfe_name = 'gfe_placeholder'
                 f_out.write('{} {:^20} {}\n'.format(id_spacer, str(seq.description), id_spacer))
                 l = 0
                 for f in ann.annotation:
@@ -105,16 +111,19 @@ def main():
                     f_out.write('\t'.join([gfe_name, f, ann.method, str(f_seq)]) + '\n')
                     l += len(f_seq)
                 f_out.write('\n')
-                if n and n > num_existing_ids and n % 1 == 0:
-                    print('%s rows loaded after %.2f seconds (with a length of %s)' %
-                            (n - num_existing_ids, time.time() - start_time_rel,
-                            len(seq)))
+                if n >= num_existing_ids and n % 1 == 0:
+                    print('%s rows loaded after %.2f seconds (with a length of %s).'
+                        ' Finished %s.'
+                        ' %s sec average per sequence. %s with no hits' %
+                            (n - num_existing_ids, time.time() - start_time_rel, len(seq),
+                            seq.description,
+                            (time.time() - start_time_abs) / (n + 1), num_no_hit))
                     start_time_rel = time.time()
                 n += 1
         except Exception as e:
             print("Error with %s at index %s: %s" % (seq.description, n, e))
     
-    print(i, "total rows loaded")
+    print(n, "total rows loaded")
 
     if serv:
         server.close()
