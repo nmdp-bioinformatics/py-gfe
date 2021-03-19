@@ -82,6 +82,8 @@ def main():
     if num_existing_ids:
         print(num_existing_ids, "rows in existing output")
 
+    f_out.write(','.join(['Description', 'GFE', 'Feature', 'Method', 'Sequence']) + '\n')
+
     gfe_maker = gfe.GFE()
     start_time_rel = start_time_abs = time.time()
     n = 0
@@ -104,13 +106,11 @@ def main():
 
                 # features, gfe_name = gfe_maker.get_gfe(ann, loc)
                 gfe_name = 'gfe_placeholder'
-                f_out.write('{} {:^20} {}\n'.format(id_spacer, str(seq.description), id_spacer))
                 l = 0
                 for f in ann.annotation:
                     f_seq = ann.annotation[f] if isinstance(ann.annotation[f], DBSeq) else ann.annotation[f].seq
-                    f_out.write('\t'.join([gfe_name, f, ann.method, str(f_seq)]) + '\n')
+                    f_out.write(','.join([str(seq.description), gfe_name, f, ann.method, str(f_seq)]) + '\n')
                     l += len(f_seq)
-                f_out.write('\n')
                 if n >= num_existing_ids and n % 1 == 0:
                     print('%s rows loaded after %.2f seconds (with a length of %s).'
                         ' Finished %s.'
