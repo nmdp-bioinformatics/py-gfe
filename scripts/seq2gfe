@@ -123,7 +123,7 @@ def main():
         except Exception as e:
             print("Error with %s at index %s: %s" % (seq.description, n, e))
     
-    print(n, "total rows loaded")
+    print("%s total rows loaded after %.2f seconds" % (n, time.time() - start_time_abs))
 
     if serv:
         server.close()
