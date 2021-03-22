@@ -74,8 +74,8 @@ def main():
                                               passwd="", host="localhost",
                                               db="bioseqdb")
 
-    pool = mp.Pool(mp.cpu_count(), initializer=init_seqann)
-    print("Finished initialized pool with %s processers" % mp.cpu_count())
+    pool = mp.Pool(1, initializer=init_seqann)
+    print("Finished initializing pool with %s processors." % mp.cpu_count())
 
     id_spacer = '{:*^20}'.format("")
 
@@ -95,7 +95,7 @@ def main():
 
     gfe_maker = gfe.GFE()
     global start_time_abs
-    start_time_rel = start_time_abs = time.time()
+    start_time_abs = time.time()
 
     global n
     for seq in SeqIO.parse(fastafile, "fasta"):
@@ -105,7 +105,10 @@ def main():
                     loc = get_locus(seq, kir=kir, verbose=verbose,
                                     refdata=seqann.refdata)
                 id, project, method, source, allele_index, allele_name = seq.description.split('|')
-            
+                if 'homozygous' in allele_index.lower() and len(seq) % 2 == 0:
+                    mid_point = int(len(seq)/2)
+                    if str(seq[:mid_point]) == str(seq[mid_point:]):
+                        seq._seq = seq[:mid_point]
                 pool.apply_async(run_seqann,
                     args=(seq, loc, kir, verbose), #, seqann, f_out),
                     callback=write_result)
@@ -121,6 +124,7 @@ def main():
 
 def init_seqann():
     global seqann
+    print("SeqAnn object initialized")
     seqann = BioSeqAnn()
 
 def write_result(result):
@@ -145,6 +149,7 @@ def run_seqann(seq, loc, kir, verbose):#seq, loc, kir, verbose, seqann, f_out):
     id, project, method, source, allele_index, allele_name = seq.description.split('|')
     ann = seqann.annotate(seq, loc, allele=allele_name)
     if not ann:
+        print("No hit with", seq.description)
         return ''
 
     # features, gfe_name = gfe_maker.get_gfe(ann, loc)
