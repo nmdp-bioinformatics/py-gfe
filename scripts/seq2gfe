@@ -74,33 +74,34 @@ def main():
                                               passwd="", host="localhost",
                                               db="bioseqdb")
 
-    pool = mp.Pool(1, initializer=init_seqann)
+    pool = mp.Pool(mp.cpu_count(), initializer=init_seqann)
     print("Finished initializing pool with %s processors." % mp.cpu_count())
-
-    id_spacer = '{:*^20}'.format("")
 
     global f_out
     f_out = open(output_filename, 'a+')
     f_out.seek(0)
-    ids = []
+    descriptions = set()
     for line in f_out:
-        if id_spacer in line:
-            spacer1, id, spacer2 = line.split(' ')
-            ids.append(id)
-    num_existing_ids = len(ids)
-    if num_existing_ids:
-        print(num_existing_ids, "rows in existing output")
-
-    f_out.write(','.join(['Description', 'GFE', 'Feature', 'Method', 'Sequence']) + '\n')
+        descriptions.add(line.split(',')[0])
+    num_existing_rows = len(descriptions)
+    if num_existing_rows:
+        print(num_existing_rows, "rows in existing output")
+    else:
+        f_out.write(','.join(['Description', 'GFE', 'Feature', 'Method', 'Sequence']) + '\n')
 
     gfe_maker = gfe.GFE()
     global start_time_abs
     start_time_abs = time.time()
 
     global n
+    parsed_existing_lines = False
     for seq in SeqIO.parse(fastafile, "fasta"):
         try:
-            if seq._seq and seq.description not in ids:
+            if seq.description in descriptions and not parsed_existing_lines:
+                continue
+            else:
+                parsed = True
+            if seq._seq and seq.description not in descriptions:
                 if not loc:
                     loc = get_locus(seq, kir=kir, verbose=verbose,
                                     refdata=seqann.refdata)
@@ -108,7 +109,7 @@ def main():
                 if 'homozygous' in allele_index.lower() and len(seq) % 2 == 0:
                     mid_point = int(len(seq)/2)
                     if str(seq[:mid_point]) == str(seq[mid_point:]):
-                        seq._seq = seq[:mid_point]
+                        seq._seq = str(seq[:mid_point])
                 pool.apply_async(run_seqann,
                     args=(seq, loc, kir, verbose), #, seqann, f_out),
                     callback=write_result)
@@ -124,8 +125,8 @@ def main():
 
 def init_seqann():
     global seqann
-    print("SeqAnn object initialized")
     seqann = BioSeqAnn()
+    print("SeqAnn object initialized")
 
 def write_result(result):
     global f_out
