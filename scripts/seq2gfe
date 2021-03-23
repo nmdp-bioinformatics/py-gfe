@@ -109,7 +109,7 @@ def main():
                 if 'homozygous' in allele_index.lower() and len(seq) % 2 == 0:
                     mid_point = int(len(seq)/2)
                     if str(seq[:mid_point]) == str(seq[mid_point:]):
-                        seq._seq = str(seq[:mid_point])
+                        seq = seq[:mid_point]
                 pool.apply_async(run_seqann,
                     args=(seq, loc, kir, verbose), #, seqann, f_out),
                     callback=write_result)
@@ -134,14 +134,12 @@ def write_result(result):
     global start_time_abs
     global n
     f_out.write(result)
-    if 'target_allele' not in result:
-        if 'clustalo' not in result:
-            print("Result did not use 'target_allele' or 'clustalo' methods.")
+    if not result:
         num_no_hit = num_no_hit + 1
         return
     n += 1
     print('%s rows loaded.'
-        ' %s sec average per sequence. %s with no allele hits' %
+        ' %s sec average per sequence. %s with no hits' %
         (n, (time.time() - start_time_abs) / (n + 1), num_no_hit))
 
 def run_seqann(seq, loc, kir, verbose):#seq, loc, kir, verbose, seqann, f_out):
@@ -152,7 +150,6 @@ def run_seqann(seq, loc, kir, verbose):#seq, loc, kir, verbose, seqann, f_out):
     id, project, method, source, allele_index, allele_name = seq.description.split('|')
     ann = seqann.annotate(seq, loc, allele=allele_name)
     if not ann:
-        print("No hit with", seq.description)
         return ''
 
     # features, gfe_name = gfe_maker.get_gfe(ann, loc)
