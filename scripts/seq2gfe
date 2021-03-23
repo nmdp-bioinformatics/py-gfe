@@ -134,12 +134,14 @@ def write_result(result):
     global start_time_abs
     global n
     f_out.write(result)
-    if not result:
+    if 'target_allele' not in result:
+        if 'clustalo' not in result:
+            print("Result did not use 'target_allele' or 'clustalo' methods.")
         num_no_hit = num_no_hit + 1
         return
     n += 1
     print('%s rows loaded.'
-        ' %s sec average per sequence. %s with no hits' %
+        ' %s sec average per sequence. %s with no allele hits' %
         (n, (time.time() - start_time_abs) / (n + 1), num_no_hit))
 
 def run_seqann(seq, loc, kir, verbose):#seq, loc, kir, verbose, seqann, f_out):
