@@ -64,7 +64,7 @@ def main():
 
         server = BioSeqDatabase.open_database(driver="pymysql",
                                             user=biosqldb_user, passwd=biosqldb_pass,
-                                            host=biosqldb_host, port=biosqldb_port
+                                            host=biosqldb_host, port=biosqldb_port,
                                             db="bioseqdb")
 
     seqann = BioSeqAnn(verbose=verbose, server=server, kir=kir)

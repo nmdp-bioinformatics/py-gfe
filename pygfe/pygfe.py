@@ -32,7 +32,6 @@ from Bio.Seq import Seq
 from Bio.Alphabet import IUPAC
 from Bio.SeqRecord import SeqRecord
 
-import pandas as pa
 from pandas import DataFrame
 
 from py2neo import Graph
