@@ -12,11 +12,8 @@ from seqann.blast_cmd import get_locus
 import time
 import multiprocessing as mp
 
-seqann = None
-f_out = None
-start_time_abs = None
-n = 0
-num_no_hit = 0
+start_time_abs = f_out = gfe_maker = seqann = None
+num_no_hit = n = 0
 
 def main():
     """This is run if file is directly executed, but not if imported as
@@ -73,9 +70,10 @@ def main():
         server = BioSeqDatabase.open_database(driver="pymysql", user="root",
                                               passwd="", host="localhost",
                                               db="bioseqdb")
-
-    pool = mp.Pool(mp.cpu_count(), initializer=init_seqann)
-    print("Finished initializing pool with %s processors." % mp.cpu_count())
+    cpu_count = mp.cpu_count() - 1
+    # cpu_count = 2
+    pool = mp.Pool(cpu_count, initializer=init_seqann)
+    print("Finished initializing pool with %s processors." % cpu_count)
 
     global f_out
     f_out = open(output_filename, 'a+')
@@ -89,7 +87,6 @@ def main():
     else:
         f_out.write(','.join(['Description', 'GFE', 'Feature', 'Method', 'Sequence']) + '\n')
 
-    gfe_maker = gfe.GFE()
     global start_time_abs
     start_time_abs = time.time()
 
@@ -102,10 +99,11 @@ def main():
             else:
                 parsed = True
             if seq._seq and seq.description not in descriptions:
-                if not loc:
-                    loc = get_locus(seq, kir=kir, verbose=verbose,
-                                    refdata=seqann.refdata)
+                # if not loc:
+                #     loc = get_locus(seq, kir=kir, verbose=verbose,
+                #                     refdata=seqann.refdata)
                 id, project, method, source, allele_index, allele_name = seq.description.split('|')
+                # id, allele_index, allele_name = seq.description.split('|')
                 if 'homozygous' in allele_index.lower() and len(seq) % 2 == 0:
                     mid_point = int(len(seq)/2)
                     if str(seq[:mid_point]) == str(seq[mid_point:]):
@@ -125,42 +123,54 @@ def main():
 
 def init_seqann():
     global seqann
+    global gfe_maker
+    global start_time_abs
+    global i
     seqann = BioSeqAnn()
+    gfe_maker = gfe.GFE()
+    start_time_abs = time.time()
+    i = 0
     print("SeqAnn object initialized")
 
 def write_result(result):
-    global f_out
     global num_no_hit
     global start_time_abs
     global n
-    f_out.write(result)
-    if not result:
-        num_no_hit = num_no_hit + 1
-        return
-    n += 1
-    print('%s rows loaded.'
-        ' %s sec average per sequence. %s with no hits' %
-        (n, (time.time() - start_time_abs) / (n + 1), num_no_hit))
+    global f_out
+    if result:
+        n += 1
+        f_out.write(result)
+    else:
+        num_no_hit += 1
+    # global start_time_abs
+    # global i
+    # print('' % ((time.time() - start_time_abs) / (i + 1)))
+    # i = i + 1
+    print('%s rows loaded. %s with no hits. %s seconds average per sequence.' 
+            % (n, num_no_hit, ((time.time() - start_time_abs) / (n + num_no_hit + 1))))
 
 def run_seqann(seq, loc, kir, verbose):#seq, loc, kir, verbose, seqann, f_out):
     global seqann
+    global gfe_maker
     if not loc:
         loc = get_locus(seq, kir=kir, verbose=verbose,
                         refdata=seqann.refdata)
     id, project, method, source, allele_index, allele_name = seq.description.split('|')
+    # id, allele_index, allele_name = seq.description.split('|')
+
     ann = seqann.annotate(seq, loc, allele=allele_name)
     if not ann:
+        print('No results with', seq.description)
         return ''
-
-    # features, gfe_name = gfe_maker.get_gfe(ann, loc)
-    gfe_name = 'gfe_placeholder'
+    features, gfe_name = gfe_maker.get_gfe(ann, loc)
+    # gfe_name = 'gfe_placeholder'
     l = 0
     output = ''
-    for f in ann.annotation:
-        f_seq = ann.annotation[f] if isinstance(ann.annotation[f], DBSeq) else ann.annotation[f].seq
-        output += ','.join([str(seq.description), gfe_name, f, ann.method, str(f_seq)]) + '\n'
-        l += len(f_seq)
-    # f_out.write(output)
+    if ann:
+        for f in ann.annotation:
+            f_seq = ann.annotation[f] if isinstance(ann.annotation[f], DBSeq) else ann.annotation[f].seq
+            output += ','.join([str(seq.description), gfe_name, f, ann.method, str(f_seq)]) + '\n'
+            l += len(f_seq)
     return output
 
 if __name__ == '__main__':
