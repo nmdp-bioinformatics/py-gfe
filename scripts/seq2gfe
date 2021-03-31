@@ -6,7 +6,6 @@ import os
 
 from Bio import SeqIO
 from BioSQL import BioSeqDatabase
-from BioSQL.BioSeq import DBSeq
 from seqann import BioSeqAnn, gfe
 from seqann.blast_cmd import get_locus
 
@@ -86,13 +85,9 @@ def main():
         print('{:*^20} {:^20} {:*^20}'.format("", str(seq.description), ""))
         l = 0
         for f in ann.annotation:
-            if isinstance(ann.annotation[f], DBSeq):
-                print(gfe_name, f, ann.method, str(ann.annotation[f]), sep="\t")
-                l += len(ann.annotation[f])
-            else:
-                print(gfe_name, f, ann.method, str(ann.annotation[f].seq), sep="\t")
-                l += len(ann.annotation[f].seq)
-        print("")
+            print(gfe_name, f, ann.method, str(ann.annotation[f]), sep="\t")
+            l += len(ann.annotation[f])
+        print("Total Length:", l)
 
     if serv:
         server.close()
