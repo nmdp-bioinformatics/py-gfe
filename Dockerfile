@@ -8,11 +8,15 @@ RUN apt-get update -q \
     && apt-get clean
 
 RUN pip install --no-cache-dir seq-ann==1.1.0
-RUN pip install --no-cache-dir py-gfe==1.1.3
+RUN pip install --no-cache-dir py-gfe==1.1.4
 
 RUN touch blank.fasta \
     && seq2gfe -f blank.fasta -l HLA-A \
 	  && seq2gfe -f blank.fasta -l KIR3DL2 -k
 
-ENV BIOSQLHOST=imgt_biosqldb 
+
+ENV BIOSQLHOST=imgt_biosqldb
 ENV BIOSQLPORT=3306
+ENV BIOSQLDB=bioseqdb
+ENV BIOSQLUSER=root
+ENV BIOSQLPASS=my-secret-pw

@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import os
 
 from Bio import SeqIO
 from BioSQL import BioSeqDatabase
@@ -42,7 +43,7 @@ def main():
                         action='store_true')
 
     args = parser.parse_args()
-    fastafile = args.file
+    fasta_file = args.file
     loc = args.locus
     serv = args.server
 
@@ -56,21 +57,21 @@ def main():
 
     server = None
     if serv:
-        import os
-        biosqldb_host = os.getenv('BIOSQLPORT', 'localhost')
-        biosqldb_port = os.getenv('BIOSQLPORT', '3306')
+        biosqldb_host = os.getenv('BIOSQLHOST', 'localhost')
+        biosqldb_port = int(os.getenv('BIOSQLPORT', 3306))
         biosqldb_user = os.getenv('BIOSQLUSER', 'root')
-        biosqldb_pass = os.getenv('BIOSQLPASSWORD', '')
+        biosqldb_pass = os.getenv('BIOSQLPASS', '')
+        biosqldb_name = os.getenv("BIOSQLDB", "bioseqdb")
 
         server = BioSeqDatabase.open_database(driver="pymysql",
-                                            user=biosqldb_user, passwd=biosqldb_pass,
-                                            host=biosqldb_host, port=biosqldb_port,
-                                            db="bioseqdb")
+                                              user=biosqldb_user, passwd=biosqldb_pass,
+                                              host=biosqldb_host, port=biosqldb_port,
+                                              db=biosqldb_name)
 
     seqann = BioSeqAnn(verbose=verbose, server=server, kir=kir)
 
     gfe_maker = gfe.GFE()
-    for seq in SeqIO.parse(fastafile, "fasta"):
+    for seq in SeqIO.parse(fasta_file, "fasta"):
         if not loc:
             loc = get_locus(seq, kir=kir, verbose=verbose,
                             refdata=seqann.refdata)
