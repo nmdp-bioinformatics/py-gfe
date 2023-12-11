@@ -40,7 +40,7 @@ test_requirements = [
 
 setup(
     name='py-gfe',
-    version='1.1.5',
+    version='1.1.6',
     description="Python package for converting sequence annotations to gene feature enumerations (GFE).",
     long_description=readme + '\n\n' + history,
     author="CIBMTR",
